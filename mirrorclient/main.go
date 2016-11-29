@@ -19,7 +19,7 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-func main() {
+func flags() {
 	flag.Usage = usage
 	flag.Parse()
 
@@ -27,26 +27,25 @@ func main() {
 		usage()
 		os.Exit(2)
 	}
-	mountpoint := flag.Arg(0)
+}
 
-	c, err := fuse.Mount(
-		mountpoint,
-		fuse.FSName("helloworld"),
-		fuse.Subtype("hellofs"),
-		fuse.LocalVolume(),
-		fuse.VolumeName("Hello world!"),
-	)
+func main() {
+	flags()
+
+	c, err := mount(flag.Arg(0))
+	defer c.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer c.Close()
 
 	sysfs := sysstatfs.Make()
 
-	err = fs.Serve(c, sysfs)
-	if err != nil {
-		log.Fatal(err)
-	}
+	go func() {
+		err := fs.Serve(c, sysfs)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	// check if the mount process has an error to report
 	<-c.Ready
@@ -54,7 +53,29 @@ func main() {
 		log.Fatal(err)
 	}
 
+	waitInterrupt(flag.Arg(0))
+}
+
+func mount(name string) (*fuse.Conn, error) {
+	return fuse.Mount(
+		name,
+		fuse.FSName("mirrorclient"),
+		fuse.Subtype("nuggetfs"),
+		fuse.LocalVolume(),
+		fuse.VolumeName("Mirrorclient"),
+	)
+}
+
+func waitInterrupt(mountPath string) {
 	sig := make(chan os.Signal, 2)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-	<-sig //wait for a stop signal
+	done := make(chan bool, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sig
+		done <- true
+	}()
+	<-done
+	log.Println("Now shutting down.")
+	fuse.Unmount(mountPath)
+	// Main's defer c.Close should do final cleanup
 }
