@@ -1,10 +1,13 @@
 package sysstatfs
 
 import (
+	"context"
 	"errors"
 	"strconv"
+	"sync"
 	"time"
 
+	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 )
 
@@ -33,6 +36,7 @@ func Make() *FS {
 // FS represents the structure which implements the sysstat filesystem.
 type FS struct {
 	rootDir    *Dir
+	lock       sync.Mutex
 	Variables  map[string]Variable
 	InodeCount uint64
 }
@@ -48,6 +52,7 @@ func (fs *FS) Root() (fs.Node, error) {
 }
 
 // Inode issues an unused Inode, or returns an error.
+// Assumes lock is held.
 func (fs *FS) Inode() (uint64, error) {
 	fs.InodeCount++
 	if fs.InodeCount > MaxSYSSTATFSInodes {
@@ -58,6 +63,8 @@ func (fs *FS) Inode() (uint64, error) {
 
 // SetVariable sets a variable to a specific value.
 func (fs *FS) SetVariable(name, value string) error {
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
 	if v, ok := fs.Variables[name]; ok {
 		if fv, ok := v.(*FixedVariable); ok {
 			fv.Value = value
@@ -83,6 +90,8 @@ func (fs *FS) SetVariable(name, value string) error {
 // SetComputedVariable sets a variable to the output of the given function. The function
 // will be called every time the file is read.
 func (fs *FS) SetComputedVariable(name string, value func() []byte) error {
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
 	if v, ok := fs.Variables[name]; ok {
 		if cv, ok := v.(*ComputedVariable); ok {
 			cv.Callback = value
@@ -103,4 +112,27 @@ func (fs *FS) SetComputedVariable(name string, value func() []byte) error {
 		Callback: value,
 	}
 	return nil
+}
+
+//Lookup implements fs.NodeRequestLookuper, basically mapping paths to nodes.
+func (fs *FS) Lookup(ctx context.Context, name string) (fs.Node, error) {
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
+	if v, ok := fs.Variables[name]; ok {
+		return v, nil
+	}
+	return nil, fuse.ENOENT
+}
+
+// ReadDirAll implements fs.HandleReadDirAller for listing directories.
+func (fs *FS) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
+	var out []fuse.Dirent
+	count := 0
+	for name := range fs.Variables {
+		out = append(out, fuse.Dirent{Inode: uint64(2 + count), Name: name, Type: fuse.DT_File})
+		count++
+	}
+	return out, nil
 }

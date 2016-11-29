@@ -22,19 +22,10 @@ func (dir *Dir) Attr(ctx context.Context, a *fuse.Attr) error {
 
 //Lookup implements fs.NodeRequestLookuper, basically mapping paths to nodes.
 func (dir *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
-	if v, ok := dir.fs.Variables[name]; ok {
-		return v, nil
-	}
-	return nil, fuse.ENOENT
+	return dir.fs.Lookup(ctx, name)
 }
 
 // ReadDirAll implements fs.HandleReadDirAller for listing directories.
 func (dir *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
-	var out []fuse.Dirent
-	count := 0
-	for name := range dir.fs.Variables {
-		out = append(out, fuse.Dirent{Inode: uint64(2 + count), Name: name, Type: fuse.DT_File})
-		count++
-	}
-	return out, nil
+	return dir.fs.ReadDirAll(ctx)
 }
