@@ -3,16 +3,16 @@ package sysstatfs
 import (
 	"context"
 	"errors"
+	"os"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/twitchyliquid64/nugget/inodeFactory"
+
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 )
-
-// MaxSYSSTATFSInodes is a hard limit on the number of inodes.
-const MaxSYSSTATFSInodes = 1000
 
 // ErrNoInodes is returned if the FS is out of inodes.
 var ErrNoInodes = errors.New("Out of Inodes")
@@ -20,45 +20,37 @@ var ErrNoInodes = errors.New("Out of Inodes")
 // Make creates a minimal FS node.
 func Make() *FS {
 	ret := &FS{
-		InodeCount: 1,
-		Variables:  map[string]Variable{},
+		Variables:   map[string]Variable{},
+		InodeSource: &inodeFactory.BasicFactory{},
 	}
+	ret.rootInode = ret.InodeSource.GetInode()
 	ret.SetVariable("ok", "1")
 	ret.SetComputedVariable("time", func() []byte {
 		return []byte(time.Now().String())
 	})
 	ret.SetComputedVariable("statfs_inodes_used", func() []byte {
-		return []byte(strconv.Itoa(int(ret.InodeCount)))
+		return []byte(strconv.Itoa(ret.InodeSource.GetIssued()))
 	})
 	return ret
 }
 
 // FS represents the structure which implements the sysstat filesystem.
 type FS struct {
-	rootDir    *Dir
-	lock       sync.Mutex
-	Variables  map[string]Variable
-	InodeCount uint64
+	rootInode   uint64
+	lock        sync.Mutex
+	Variables   map[string]Variable
+	InodeSource inodeFactory.InodeFactory
 }
 
 // Root returns the root Node for this file system.
 func (fs *FS) Root() (fs.Node, error) {
-	if fs.rootDir == nil {
-		fs.rootDir = &Dir{
-			fs: fs,
-		}
-	}
-	return fs.rootDir, nil
+	return fs, nil
 }
 
 // Inode issues an unused Inode, or returns an error.
 // Assumes lock is held.
 func (fs *FS) Inode() (uint64, error) {
-	fs.InodeCount++
-	if fs.InodeCount > MaxSYSSTATFSInodes {
-		return 0, ErrNoInodes
-	}
-	return fs.InodeCount, nil
+	return fs.InodeSource.GetInode(), nil
 }
 
 // SetVariable sets a variable to a specific value.
@@ -135,4 +127,11 @@ func (fs *FS) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		count++
 	}
 	return out, nil
+}
+
+// Attr implements fs.Node - so this structure represents the readonly directory.
+func (fs *FS) Attr(ctx context.Context, a *fuse.Attr) error {
+	a.Inode = fs.rootInode
+	a.Mode = os.ModeDir | 0555
+	return nil
 }
