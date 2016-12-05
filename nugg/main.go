@@ -15,7 +15,7 @@ import (
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "  %s MOUNTPOINT\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s <path-to-mountpoint>\n", os.Args[0])
 	flag.PrintDefaults()
 }
 
