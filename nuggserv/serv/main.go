@@ -4,15 +4,21 @@ import (
 	"crypto/tls"
 	"log"
 	"net"
+
+	"github.com/twitchyliquid64/nugget/nuggserv/remoteconn"
 )
 
-func mainloop(listener net.Listener) {
-	conn, err := listener.Accept()
-	if err != nil {
-		log.Println("Listener err: ", err)
-		break
-	} else {
-		// Do shit with the connection?
+func (m *Manager) mainloop(listener net.Listener) {
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Println("Listener err: ", err)
+			break
+		} else {
+			remoteConn := initClient(conn, m)
+			go remoteConn.ClientReadLoop()
+			go remoteConn.ClientWriteLoop()
+		}
 	}
 }
 
@@ -25,14 +31,9 @@ func initNetwork(listenAddr, certPemPath, keyPemPath, caCertPath string) (net.Li
 	return listener, err
 }
 
-func initClient() {
-
-}
-
-func clientReadLoop() {
-
-}
-
-func clientWriteLoop() {
-
+func initClient(conn net.Conn, manager *Manager) *remoteconn.Duplex {
+	return &remoteconn.Duplex{
+		Conn:    conn,
+		Manager: manager,
+	}
 }

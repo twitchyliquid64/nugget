@@ -30,4 +30,8 @@ func main() {
 
 	// Start our core internals: PathStore, NodeStore, ChunkStore
 	// TODO: Implement these essentials
+
+	// Start our routing internals : component mapping requests to functions with IDs
+
+	// Start our network stack - TLS init, connection manager, listener
 }

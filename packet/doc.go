@@ -1,7 +1,6 @@
 package packet
 
 import (
-	"bytes"
 	"encoding/gob"
 	"io"
 	"time"
@@ -19,28 +18,15 @@ const (
 	PktPong
 )
 
-// Packet represents a data packet on the wire.
-type Packet struct {
-	Type PktType
-	Data []byte
-}
-
-// PingPing represents a ping/pong packet on the wire
-type PingPing struct {
+// PingPong represents a ping/pong packet on the wire
+type PingPong struct {
 	Sent time.Time
 }
 
 // Transiever takes a network bytestream and interprets it into packet structures.
 type Transiever struct {
-	justReadPacket Packet
-
-	packetDecoder      *gob.Decoder
-	packetEncoder      *gob.Encoder
-	pingPongPktDecoder *gob.Decoder
-	pingPongPktEncoder *gob.Encoder
-
-	encapPktBufferInput  bytes.Buffer
-	encapPktBufferOutput bytes.Buffer
+	packetDecoder *gob.Decoder
+	packetEncoder *gob.Encoder
 
 	reader io.Reader
 	writer io.Writer
