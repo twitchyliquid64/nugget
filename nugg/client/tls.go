@@ -1,4 +1,4 @@
-package serv
+package client
 
 import (
 	"crypto/tls"
@@ -37,9 +37,7 @@ func tlsConfig(certPemPath, keyPemPath, caCertPath string) (*tls.Config, error) 
 				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
 				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 			},
-			SessionTicketsDisabled: true,
 		}
-		gTLSConfig.BuildNameToCertificate()
 	}
 
 	return gTLSConfig, nil

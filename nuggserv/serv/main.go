@@ -4,13 +4,17 @@ import (
 	"crypto/tls"
 	"log"
 	"net"
-
-	"github.com/twitchyliquid64/nugget/nuggserv/remoteconn"
+	"time"
 )
 
-func (m *Manager) mainloop(listener net.Listener) {
-	for {
-		conn, err := listener.Accept()
+func (m *Manager) mainloop() {
+	var tcpListener *net.TCPListener
+	tcpListener, _ = m.listener.(*net.TCPListener)
+	for m.isOnline {
+		if tcpListener != nil {
+			tcpListener.SetDeadline(time.Now().Add(time.Millisecond * 300))
+		}
+		conn, err := m.listener.Accept()
 		if err != nil {
 			log.Println("Listener err: ", err)
 			break
@@ -31,8 +35,26 @@ func initNetwork(listenAddr, certPemPath, keyPemPath, caCertPath string) (net.Li
 	return listener, err
 }
 
-func initClient(conn net.Conn, manager *Manager) *remoteconn.Duplex {
-	return &remoteconn.Duplex{
+// NewServer initializes a network server on listeAddr, accepting connections which can authenticate themselves
+// as based of the certificate at caCertPath. The TLS server authenticates itself using the cert/key at
+// certPemPath and keyPemPath respectively.
+func NewServer(listenAddr, certPemPath, keyPemPath, caCertPath string) (*Manager, error) {
+	listener, err := initNetwork(listenAddr, certPemPath, keyPemPath, caCertPath)
+	if err != nil {
+		return nil, err
+	}
+
+	m := &Manager{
+		isOnline: true,
+		listener: listener,
+	}
+
+	go m.mainloop()
+	return m, nil
+}
+
+func initClient(conn net.Conn, manager *Manager) *Duplex {
+	return &Duplex{
 		Conn:    conn,
 		Manager: manager,
 	}
