@@ -1,4 +1,4 @@
-package remote
+package nugget
 
 // Remote supports the representation of remote filesystems, and implements data exchange
 
