@@ -13,11 +13,19 @@ type DataSource interface {
 	Lookup(path string) (EntryID, error)
 	ReadMeta(entry EntryID) (NodeMetadata, error)
 	ReadData(node ChunkID) ([]byte, error)
+	Fetch(path string) (EntryID, NodeMetadata, []byte, error)
 }
 
 // DataSink represents entities who can accept data writes.
 type DataSink interface {
 	Store(path string, data []byte) (EntryID, NodeMetadata, error)
+}
+
+// DataSourceSink represents an entity which can both accept data writes
+// and be queried about filesystem objects.
+type DataSourceSink interface {
+	DataSink
+	DataSource
 }
 
 // NodeMetadata represents the metadata of a file/directory.

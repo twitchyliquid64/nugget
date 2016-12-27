@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/twitchyliquid64/nugget"
 )
@@ -64,17 +65,62 @@ func (p *Provider) ReadData(chunkID nugget.ChunkID) ([]byte, error) {
 	return p.chunkstore.Lookup(chunkID)
 }
 
+func (p *Provider) appendDirectoryEntry(fPath string) error {
+	dirPath := path.Dir(fPath)
+	_, meta, data, err := p.Fetch(dirPath)
+	if err != nil && err != ErrPathNotFound {
+		return err
+	} else if err == nil {
+		if !meta.IsDirectory() {
+			return errors.New("Cannot make file on top of a non-directory path")
+		}
+	}
+
+	entries := strings.Split(string(data), "\n")
+	for _, entry := range entries {
+		if entry == fPath {
+			return nil
+		}
+	}
+	//doesnt exist, add it
+	entries = append(entries, fPath)
+	_, _, _, err = p.store(dirPath, []byte(strings.Join(entries, "\n")), true)
+	return err
+}
+
 //Store completely overwrites a file at fPath.
 func (p *Provider) Store(fPath string, data []byte) (nugget.EntryID, nugget.NodeMetadata, error) {
+	eID, meta, newFile, err := p.store(fPath, data, false)
+	if err == nil && newFile {
+		err = p.appendDirectoryEntry(fPath)
+	}
+	return eID, meta, err
+}
+
+// Fetch returns the full tree of information about a file.
+func (p *Provider) Fetch(fPath string) (eID nugget.EntryID, meta nugget.NodeMetadata, data []byte, err error) {
+	eID, err = p.Lookup(fPath)
+	if err != nil {
+		return
+	}
+	meta, err = p.ReadMeta(eID)
+	if err != nil {
+		return
+	}
+	data, err = p.ReadData(meta.GetDataLocality().Chunks()[0])
+	return
+}
+
+func (p *Provider) store(fPath string, data []byte, isDir bool) (nugget.EntryID, nugget.NodeMetadata, bool, error) {
 	existingEntryID, pathSearchError := p.Lookup(fPath)
 	if pathSearchError != nil && pathSearchError != ErrPathNotFound {
-		return existingEntryID, nil, pathSearchError
+		return existingEntryID, nil, false, pathSearchError
 	} // return an error for all path errors, except where file does not exist.
 
 	//commit data first
 	chunkID, chunkWriteError := p.chunkstore.Forge(data)
 	if chunkWriteError != nil {
-		return existingEntryID, nil, chunkWriteError
+		return existingEntryID, nil, false, chunkWriteError
 	} //return error if we could not write the raw data
 
 	//now we make a brand new metadata entry
@@ -82,7 +128,7 @@ func (p *Provider) Store(fPath string, data []byte) (nugget.EntryID, nugget.Node
 	rand.Read(newEntryID[:])
 	meta := EntryMetadata{
 		EntryID: newEntryID,
-		IsDir:   false,
+		IsDir:   isDir,
 		Lname:   path.Base(fPath),
 		Size:    uint64(len(data)),
 		Locality: LocalityInfo{
@@ -93,7 +139,7 @@ func (p *Provider) Store(fPath string, data []byte) (nugget.EntryID, nugget.Node
 	metaWriteError := p.metastore.Commit(meta)
 	if metaWriteError != nil {
 		p.chunkstore.Delete(chunkID) // Undo our only change - new chunk
-		return existingEntryID, &meta, metaWriteError
+		return existingEntryID, &meta, false, metaWriteError
 	}
 
 	pathWriteError := p.pathstore.Commit(fPath, newEntryID)
@@ -106,11 +152,11 @@ func (p *Provider) Store(fPath string, data []byte) (nugget.EntryID, nugget.Node
 	if pathSearchError == nil { //path already exists, need to delete crap
 		swapErr := p.deleteGracefullyOrRollbackNewFile(fPath, chunkID, existingEntryID, &meta)
 		if swapErr != nil {
-			return newEntryID, nil, swapErr
+			return newEntryID, nil, false, swapErr
 		}
 	}
 
-	return newEntryID, &meta, pathWriteError
+	return newEntryID, &meta, pathSearchError == ErrPathNotFound, pathWriteError
 }
 
 func (p *Provider) deleteGracefullyOrRollbackNewFile(fPath string, newChunkID nugget.ChunkID, oldEntryID nugget.EntryID, newMeta *EntryMetadata) error {

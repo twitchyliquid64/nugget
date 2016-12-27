@@ -51,16 +51,12 @@ func TestProviderStore(t *testing.T) {
 	if (meta.GetDataLocality().Chunks()[0] == nugget.ChunkID{}) {
 		t.Error("ChunkID is empty:", meta.GetDataLocality().Chunks())
 	}
-	foundEntry, err := p.Lookup("/mate/waht")
+	foundEntry, foundMeta, foundData, err := p.Fetch("/mate/waht")
 	if err != nil {
 		t.Error(err)
 	}
 	if foundEntry != entryID {
 		t.Error("Expected matching entryID's", foundEntry, entryID)
-	}
-	foundMeta, err := p.ReadMeta(foundEntry)
-	if err != nil {
-		t.Error(err)
 	}
 	if foundMeta.LocalName() != "waht" {
 		t.Error("Local name incorrect")
@@ -70,10 +66,6 @@ func TestProviderStore(t *testing.T) {
 	}
 	if foundMeta.GetDataLocality().Chunks()[0] != meta.GetDataLocality().Chunks()[0] {
 		t.Error("Chunk ID mismatch")
-	}
-	foundData, err := p.ReadData(foundMeta.GetDataLocality().Chunks()[0])
-	if err != nil {
-		t.Error(err)
 	}
 	if string(foundData) != "yolo" {
 		t.Error("Data incorrect")
