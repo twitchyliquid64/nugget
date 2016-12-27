@@ -29,9 +29,9 @@ func TestMetaCommitSucceeds(t *testing.T) {
 	}()
 
 	meta := EntryMetadata{
-		EntryID:   nugget.EntryID{'1', '\xA7'},
-		Size:      4553,
-		LocalName: "bro",
+		EntryID: nugget.EntryID{'1', '\xA7'},
+		Size:    4553,
+		Lname:   "bro",
 	}
 
 	err = p.Commit(meta)
@@ -51,10 +51,10 @@ func TestMetaCommitReadSucceeds(t *testing.T) {
 	}()
 
 	meta := EntryMetadata{
-		EntryID:   nugget.EntryID{'1', '\xA7'},
-		Size:      4553,
-		LocalName: "bro",
-		IsDir:     true,
+		EntryID: nugget.EntryID{'1', '\xA7'},
+		Size:    4553,
+		Lname:   "bro",
+		IsDir:   true,
 		Locality: LocalityInfo{
 			ChunkID: nugget.ChunkID{'\x42'},
 		},
@@ -69,7 +69,7 @@ func TestMetaCommitReadSucceeds(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if v.LocalName != meta.LocalName {
+	if v.Lname != meta.Lname {
 		t.Error("Name mismatch")
 	}
 	if v.Size != meta.Size {

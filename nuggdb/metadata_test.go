@@ -10,10 +10,10 @@ import (
 
 func TestSerialize(t *testing.T) {
 	a := EntryMetadata{
-		EntryID:   nugget.EntryID{'1', '2', '0', '0', '0', '0', '6', '0', '\xFF', '0', '0', 'A'},
-		LocalName: "Lolz",
-		Size:      54634532544,
-		IsDir:     true,
+		EntryID: nugget.EntryID{'1', '2', '0', '0', '0', '0', '6', '0', '\xFF', '0', '0', 'A'},
+		Lname:   "Lolz",
+		Size:    54634532544,
+		IsDir:   true,
 		Locality: LocalityInfo{
 			ChunkID: nugget.ChunkID{'1', '2'},
 		},
@@ -30,7 +30,7 @@ func TestSerialize(t *testing.T) {
 	}
 
 	localName := string(bytes.Trim(a.Serialize()[12:12+100], "\x00"))
-	if localName != a.LocalName {
+	if localName != a.Lname {
 		t.Error("Names do not match, got", localName, "len", len(localName))
 	}
 
@@ -52,10 +52,10 @@ func TestSerialize(t *testing.T) {
 
 func TestSerializeDeserialize(t *testing.T) {
 	a := EntryMetadata{
-		EntryID:   nugget.EntryID{'1', '2', '0', '0', '0', '0', '6', '0', '\xFF', '0', '0', 'A'},
-		LocalName: "Lolz",
-		Size:      54634532544,
-		IsDir:     true,
+		EntryID: nugget.EntryID{'1', '2', '0', '0', '0', '0', '6', '0', '\xFF', '0', '0', 'A'},
+		Lname:   "Lolz",
+		Size:    54634532544,
+		IsDir:   true,
 		Locality: LocalityInfo{
 			ChunkID: nugget.ChunkID{'1', '2'},
 		},
@@ -65,7 +65,7 @@ func TestSerializeDeserialize(t *testing.T) {
 	if out.IsDir != a.IsDir {
 		t.Error("Expected IsDir to match")
 	}
-	if out.LocalName != a.LocalName {
+	if out.Lname != a.Lname {
 		t.Error("Expected LocalName to match")
 	}
 	if out.Size != a.Size {

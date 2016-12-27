@@ -77,3 +77,12 @@ func (ps *Metastore) Commit(meta EntryMetadata) error {
 func (ps *Metastore) Close() error {
 	return ps.db.Close()
 }
+
+// Delete removes a metadata entry from the metastore. Nil is returned if the entryID is not mapped.
+func (ps *Metastore) Delete(entryID nugget.EntryID) error {
+	return ps.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(entryIDToMetaBucket))
+		err := b.Delete(entryID[:])
+		return err
+	})
+}

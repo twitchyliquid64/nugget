@@ -17,6 +17,7 @@ type DataSource interface {
 
 // DataSink represents entities who can accept data writes.
 type DataSink interface {
+	Store(path string, data []byte) (EntryID, NodeMetadata, error)
 }
 
 // NodeMetadata represents the metadata of a file/directory.
@@ -31,7 +32,6 @@ type NodeMetadata interface {
 // LocalityInfo represents information about the concrete location of data.
 type LocalityInfo interface {
 	IsChunked() bool
-	ChunkSize() uint64
 	Chunks() []ChunkID
 	ChunkAtIndex(int) ChunkID
 }
