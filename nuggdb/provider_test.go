@@ -72,4 +72,47 @@ func TestProviderStore(t *testing.T) {
 	}
 }
 
+func TestProviderStoreTwiceHasDifferentIDs(t *testing.T) {
+	baseDir, err := ioutil.TempDir("", "nuggdb_provider_test")
+	defer func() {
+		os.RemoveAll(baseDir)
+	}()
+	if err != nil {
+		t.Error("Setup error:", err)
+		t.FailNow()
+	}
+
+	p, err := Create(baseDir)
+	if err != nil {
+		t.Error(err)
+	}
+	defer p.Close()
+
+	entryID, meta, err := p.Store("/mate/waht", []byte("yolo"))
+	if err != nil {
+		t.Error(err)
+	}
+	entryID2, meta2, err2 := p.Store("/mate/waht", []byte("yolo2"))
+	if err2 != nil {
+		t.Error(err)
+	}
+	if entryID == entryID2 {
+		t.Error("Expected different entryIDs")
+	}
+	if meta.GetDataLocality().Chunks()[0] == meta2.GetDataLocality().Chunks()[0] {
+		t.Error("Expected different chunkIDs")
+	}
+
+	foundEntry, _, foundData, err := p.Fetch("/mate/waht")
+	if err != nil {
+		t.Error(err)
+	}
+	if foundEntry != entryID2 {
+		t.Error("Expected lookup ID to match second entryID")
+	}
+	if string(foundData) != "yolo2" {
+		t.Error("Data incorrect")
+	}
+}
+
 //TODO: Tests for each of the error conditions in Provider.Store()

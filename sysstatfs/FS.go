@@ -18,10 +18,10 @@ import (
 var ErrNoInodes = errors.New("Out of Inodes")
 
 // Make creates a minimal FS node.
-func Make() *FS {
+func Make(inodeSource inodeFactory.InodeFactory) *FS {
 	ret := &FS{
 		Variables:   map[string]Variable{},
-		InodeSource: &inodeFactory.BasicFactory{},
+		InodeSource: inodeSource,
 	}
 	ret.rootInode = ret.InodeSource.GetInode()
 	ret.SetVariable("ok", "1")
@@ -122,8 +122,8 @@ func (fs *FS) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	defer fs.lock.Unlock()
 	var out []fuse.Dirent
 	count := 0
-	for name := range fs.Variables {
-		out = append(out, fuse.Dirent{Inode: uint64(2 + count), Name: name, Type: fuse.DT_File})
+	for name, vari := range fs.Variables {
+		out = append(out, fuse.Dirent{Inode: vari.GetInode(), Name: name, Type: fuse.DT_File})
 		count++
 	}
 	return out, nil

@@ -81,10 +81,10 @@ func doMount() {
 func mount(name string) (*fuse.Conn, error) {
 	return fuse.Mount(
 		name,
-		fuse.FSName("mirrorclient"),
+		fuse.FSName("nugg"),
 		fuse.Subtype("nuggetfs"),
 		fuse.LocalVolume(),
-		fuse.VolumeName("Mirrorclient"),
+		fuse.VolumeName("nugg"),
 	)
 }
 

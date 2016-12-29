@@ -19,6 +19,7 @@ type DataSource interface {
 // DataSink represents entities who can accept data writes.
 type DataSink interface {
 	Store(path string, data []byte) (EntryID, NodeMetadata, error)
+	Close() error
 }
 
 // DataSourceSink represents an entity which can both accept data writes
