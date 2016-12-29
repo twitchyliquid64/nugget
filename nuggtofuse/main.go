@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"sync"
 
@@ -32,6 +33,14 @@ func Make(provider nugget.DataSourceSink, inodeSource *inodeFactory.PathAwareFac
 	return r
 }
 
+func (fs *FS) getFile(fullPath string) *File {
+	return &File{
+		fs:       fs,
+		inode:    fs.getInode(fullPath),
+		fullPath: fullPath,
+	}
+}
+
 // Root returns the root Node for this file system.
 func (fs *FS) Root() (fs.Node, error) {
 	return fs, nil
@@ -42,8 +51,15 @@ func (fs *FS) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	fs.lock.Lock()
 	defer fs.lock.Unlock()
 	fmt.Fprintln(os.Stderr, "Lookup", name)
-	//return v, nil
-	return nil, fuse.ENOENT
+	_, err := fs.provider.Lookup("/" + name)
+	if err == nuggdb.ErrPathNotFound {
+		return nil, fuse.ENOENT
+	} else if err != nil {
+		fmt.Fprintln(os.Stderr, "Err:", err)
+		return nil, fuse.EIO
+	}
+
+	return fs.getFile("/" + name), nil
 }
 
 // ReadDirAll implements fs.HandleReadDirAller for listing directories.
@@ -60,8 +76,11 @@ func (fs *FS) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		return out, fuse.EIO
 	}
 	for _, entry := range strings.Split(string(data), "\n") { //TODO: Refactor the fetch n split to occur in the data source/sink
-		out = append(out, fuse.Dirent{Inode: uint64(fs.getInode(entry)), Name: entry, Type: fuse.DT_File})
+		if entry != "" {
+			out = append(out, fuse.Dirent{Inode: uint64(fs.getInode(entry)), Name: path.Base(entry), Type: fuse.DT_File})
+		}
 	}
+	fmt.Println(out)
 	return out, nil
 }
 
@@ -75,8 +94,22 @@ func (fs *FS) getInode(path string) uint64 {
 
 // Attr implements fs.Node - so this structure represents the root directory.
 func (fs *FS) Attr(ctx context.Context, a *fuse.Attr) error {
-	//fmt.Fprintln(os.Stderr, "Attr")
+	fmt.Fprintln(os.Stderr, "Attr")
 	a.Inode = fs.rootInode
-	a.Mode = os.ModeDir | 0555 //TODO: Make not read only
+	a.Mode = os.ModeDir | 0777
 	return nil
+}
+
+// Create implements fs.NodeCreater. It is called to create and open a new
+// file. The kernel will first try to Lookup the name, and this method will only be called
+// if the name didn't exist.
+func (fs *FS) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
+	if strings.Contains(req.Name, "/") {
+		fmt.Fprintln(os.Stderr, "Cannot create node which contains slashes: ", req.Name)
+		return nil, nil, fuse.EPERM
+	}
+	fmt.Fprintln(os.Stderr, "Create: ", req.Name, ":", req.String())
+	fs.provider.Store("/"+req.Name, []byte{})
+	f := fs.getFile("/" + req.Name)
+	return f, f, fuse.EIO
 }

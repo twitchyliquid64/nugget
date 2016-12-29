@@ -26,6 +26,7 @@ func (f *PathAwareFactory) GetIssued() int {
 func (f *PathAwareFactory) GetByPath(path string) uint64 {
 	f.Lock.Lock()
 	defer f.Lock.Unlock()
+
 	i, ok := f.Paths[path]
 	if ok {
 		return i
@@ -33,6 +34,13 @@ func (f *PathAwareFactory) GetByPath(path string) uint64 {
 	f.LastIssuedInode++
 	f.Paths[path] = f.LastIssuedInode
 	return f.LastIssuedInode
+}
+
+// MakePathAwareFactory returns an initialized structure ready to be used.
+func MakePathAwareFactory() *PathAwareFactory {
+	return &PathAwareFactory{
+		Paths: map[string]uint64{},
+	}
 }
 
 //TODO: Need tests!

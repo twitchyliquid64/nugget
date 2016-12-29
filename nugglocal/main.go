@@ -35,9 +35,12 @@ func flags() {
 func main() {
 	flags()
 	c, provider, fatalErrChan := doMount()
-	defer c.Close()
 	defer provider.Close()
-	waitInterrupt(flag.Arg(0), fatalErrChan)
+	waitInterrupt(fatalErrChan)
+
+	//Close down
+	fuse.Unmount(flag.Arg(0))
+	c.Close()
 }
 
 func doMount() (*fuse.Conn, nugget.DataSourceSink, chan error) {
@@ -46,7 +49,7 @@ func doMount() (*fuse.Conn, nugget.DataSourceSink, chan error) {
 	if err != nil {
 		log.Fatal("FS init failure: ", err)
 	}
-	mainFS := nuggtofuse.Make(provider, &inodeFactory.PathAwareFactory{LastIssuedInode: 1})
+	mainFS := nuggtofuse.Make(provider, inodeFactory.MakePathAwareFactory())
 
 	//Create the mount
 	c, err := mount(flag.Arg(0))
@@ -82,7 +85,7 @@ func mount(mountpoint string) (*fuse.Conn, error) {
 	)
 }
 
-func waitInterrupt(mountPath string, fatalErrChan chan error) {
+func waitInterrupt(fatalErrChan chan error) {
 	sig := make(chan os.Signal, 2)
 	done := make(chan bool, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
@@ -97,6 +100,4 @@ func waitInterrupt(mountPath string, fatalErrChan chan error) {
 	case err := <-fatalErrChan:
 		log.Println("FUSE error: ", err)
 	}
-	fuse.Unmount(mountPath)
-	// main()'s defer c.Close should do final cleanup
 }
