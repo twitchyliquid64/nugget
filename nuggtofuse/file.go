@@ -15,6 +15,7 @@ type File struct {
 
 // Attr implements fs.Node, allowing the Variable to masquerade as a fuse file.
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
+	f.fs.logger.Info("fuse-attr", "Got request for ", f.fullPath)
 	a.Inode = f.inode
 	a.Mode = 0444
 
@@ -34,6 +35,7 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 
 // ReadAll implements fs.HandleReadAller, allowing file reads.
 func (f *File) ReadAll(ctx context.Context) ([]byte, error) {
+	f.fs.logger.Info("fuse-readall", "Got request for ", f.fullPath)
 	_, _, data, err := f.fs.provider.Fetch(f.fullPath)
 	return data, err
 }

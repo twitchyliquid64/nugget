@@ -12,6 +12,7 @@ import (
 	"bazil.org/fuse/fs"
 	"github.com/twitchyliquid64/nugget"
 	"github.com/twitchyliquid64/nugget/inodeFactory"
+	"github.com/twitchyliquid64/nugget/logger"
 	"github.com/twitchyliquid64/nugget/nuggdb"
 	"github.com/twitchyliquid64/nugget/nuggtofuse"
 )
@@ -33,8 +34,9 @@ func flags() {
 }
 
 func main() {
+	l := logger.New(os.Stdout, os.Stderr)
 	flags()
-	c, provider, fatalErrChan := doMount()
+	c, provider, fatalErrChan := doMount(l)
 	defer provider.Close()
 	waitInterrupt(fatalErrChan)
 
@@ -43,13 +45,13 @@ func main() {
 	c.Close()
 }
 
-func doMount() (*fuse.Conn, nugget.DataSourceSink, chan error) {
+func doMount(l *logger.Logger) (*fuse.Conn, nugget.DataSourceSink, chan error) {
 	//Initialize the filesystem backend
-	provider, err := nuggdb.Create(flag.Arg(1))
+	provider, err := nuggdb.Create(flag.Arg(1), l)
 	if err != nil {
 		log.Fatal("FS init failure: ", err)
 	}
-	mainFS := nuggtofuse.Make(provider, inodeFactory.MakePathAwareFactory())
+	mainFS := nuggtofuse.Make(provider, inodeFactory.MakePathAwareFactory(), l)
 
 	//Create the mount
 	c, err := mount(flag.Arg(0))

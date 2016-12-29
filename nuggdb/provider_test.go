@@ -6,7 +6,18 @@ import (
 	"testing"
 
 	"github.com/twitchyliquid64/nugget"
+	"github.com/twitchyliquid64/nugget/logger"
 )
+
+type nullWriter struct{}
+
+func (n *nullWriter) Write(a []byte) (int, error) {
+	return len(a), nil
+}
+
+func emptyLogger() *logger.Logger {
+	return logger.New(&nullWriter{}, &nullWriter{})
+}
 
 func TestCreateProvider(t *testing.T) {
 	baseDir, err := ioutil.TempDir("", "nuggdb_provider_test")
@@ -18,7 +29,7 @@ func TestCreateProvider(t *testing.T) {
 		t.FailNow()
 	}
 
-	p, err := Create(baseDir)
+	p, err := Create(baseDir, emptyLogger())
 	if err != nil {
 		t.Error(err)
 	}
@@ -35,7 +46,7 @@ func TestProviderStore(t *testing.T) {
 		t.FailNow()
 	}
 
-	p, err := Create(baseDir)
+	p, err := Create(baseDir, emptyLogger())
 	if err != nil {
 		t.Error(err)
 	}
@@ -82,7 +93,7 @@ func TestProviderStoreTwiceHasDifferentIDs(t *testing.T) {
 		t.FailNow()
 	}
 
-	p, err := Create(baseDir)
+	p, err := Create(baseDir, emptyLogger())
 	if err != nil {
 		t.Error(err)
 	}

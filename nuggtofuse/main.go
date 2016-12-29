@@ -12,6 +12,7 @@ import (
 	"bazil.org/fuse/fs"
 	"github.com/twitchyliquid64/nugget"
 	"github.com/twitchyliquid64/nugget/inodeFactory"
+	"github.com/twitchyliquid64/nugget/logger"
 	"github.com/twitchyliquid64/nugget/nuggdb"
 )
 
@@ -21,13 +22,15 @@ type FS struct {
 	lock        sync.Mutex
 	InodeSource inodeFactory.InodeFactory
 	provider    nugget.DataSourceSink
+	logger      *logger.Logger
 }
 
 // Make creates wraps a provider in a structure that can represent a FUSE filesystem.
-func Make(provider nugget.DataSourceSink, inodeSource *inodeFactory.PathAwareFactory) *FS {
+func Make(provider nugget.DataSourceSink, inodeSource *inodeFactory.PathAwareFactory, l *logger.Logger) *FS {
 	r := &FS{
 		InodeSource: inodeSource,
 		provider:    provider,
+		logger:      l,
 	}
 	r.rootInode = inodeSource.GetInode()
 	return r
@@ -50,7 +53,7 @@ func (fs *FS) Root() (fs.Node, error) {
 func (fs *FS) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	fs.lock.Lock()
 	defer fs.lock.Unlock()
-	fmt.Fprintln(os.Stderr, "Lookup", name)
+	fs.logger.Info("fuse-lookup", "Query for: ", name)
 	_, err := fs.provider.Lookup("/" + name)
 	if err == nuggdb.ErrPathNotFound {
 		return nil, fuse.ENOENT
@@ -66,7 +69,8 @@ func (fs *FS) Lookup(ctx context.Context, name string) (fs.Node, error) {
 func (fs *FS) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	fs.lock.Lock()
 	defer fs.lock.Unlock()
-	fmt.Fprintln(os.Stderr, "ReadDirAll")
+	fs.logger.Info("fuse-readdirall", "Got root request")
+
 	var out []fuse.Dirent
 	_, _, data, err := fs.provider.Fetch("/")
 	if err == nuggdb.ErrPathNotFound {
@@ -94,7 +98,7 @@ func (fs *FS) getInode(path string) uint64 {
 
 // Attr implements fs.Node - so this structure represents the root directory.
 func (fs *FS) Attr(ctx context.Context, a *fuse.Attr) error {
-	fmt.Fprintln(os.Stderr, "Attr")
+	fs.logger.Info("fuse-attr", "Got root request")
 	a.Inode = fs.rootInode
 	a.Mode = os.ModeDir | 0777
 	return nil
@@ -105,10 +109,10 @@ func (fs *FS) Attr(ctx context.Context, a *fuse.Attr) error {
 // if the name didn't exist.
 func (fs *FS) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.CreateResponse) (fs.Node, fs.Handle, error) {
 	if strings.Contains(req.Name, "/") {
-		fmt.Fprintln(os.Stderr, "Cannot create node which contains slashes: ", req.Name)
+		fs.logger.Error("fuse-create", "Cannot create node which contains slashes: ", req.Name)
 		return nil, nil, fuse.EPERM
 	}
-	fmt.Fprintln(os.Stderr, "Create: ", req.Name, ":", req.String())
+	fs.logger.Info("fuse-create", "Name: ", req.Name)
 	fs.provider.Store("/"+req.Name, []byte{})
 	f := fs.getFile("/" + req.Name)
 	return f, f, fuse.EIO

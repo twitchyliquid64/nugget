@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/twitchyliquid64/nugget"
+	"github.com/twitchyliquid64/nugget/logger"
 )
 
 const (
@@ -26,7 +27,7 @@ type Provider struct {
 
 // Create initializes the backend of a nugget filesystem, returning an object that implements
 // nugget.DataSource & nugget.DataSink.
-func Create(baseDir string) (*Provider, error) {
+func Create(baseDir string, l *logger.Logger) (*Provider, error) {
 	var err error
 	ret := &Provider{
 		basedir: baseDir,
