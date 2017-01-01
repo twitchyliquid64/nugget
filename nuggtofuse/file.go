@@ -2,7 +2,6 @@ package nuggtofuse
 
 import (
 	"context"
-	"os"
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
@@ -27,7 +26,7 @@ func (f *File) Open(ctx context.Context, req *fuse.OpenRequest, resp *fuse.OpenR
 func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 	f.fs.logger.Info("fuse-attr", "Got request for ", f.fullPath)
 	a.Inode = f.inode
-	a.Mode = os.ModePerm | 0777
+	a.Mode = 0777
 
 	entryID, err := f.fs.provider.Lookup(f.fullPath)
 	if err != nil {
@@ -66,6 +65,7 @@ func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.Wri
 		f.fs.logger.Error("fuse-write", "Failed store operation: ", err)
 		return fuse.EIO
 	}
+	resp.Size = len(req.Data)
 	return nil
 }
 
