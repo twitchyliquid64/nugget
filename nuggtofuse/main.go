@@ -44,6 +44,14 @@ func (fs *FS) getFile(fullPath string) *File {
 	}
 }
 
+func (fs *FS) getDir(fullPath string) *Dir {
+	return &Dir{
+		fs:       fs,
+		inode:    fs.getInode(fullPath),
+		fullPath: fullPath,
+	}
+}
+
 // Root returns the root Node for this file system.
 func (fs *FS) Root() (fs.Node, error) {
 	return fs, nil
@@ -54,14 +62,23 @@ func (fs *FS) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	fs.lock.Lock()
 	defer fs.lock.Unlock()
 	fs.logger.Info("fuse-lookup", "Query for: ", name)
-	_, err := fs.provider.Lookup("/" + name)
+	eID, err := fs.provider.Lookup("/" + name)
 	if err == nuggdb.ErrPathNotFound {
 		return nil, fuse.ENOENT
 	} else if err != nil {
-		fmt.Fprintln(os.Stderr, "Err:", err)
+		fs.logger.Error("fuse-lookup", "Lookup for "+name+" failed: ", err)
 		return nil, fuse.EIO
 	}
 
+	meta, err := fs.provider.ReadMeta(eID)
+	if err != nil {
+		fs.logger.Error("fuse-lookup", "ReadMeta for "+name+" failed: ", err)
+		return nil, fuse.EIO
+	}
+
+	if meta.IsDirectory() {
+		return fs.getDir("/" + name), nil
+	}
 	return fs.getFile("/" + name), nil
 }
 
@@ -72,16 +89,19 @@ func (fs *FS) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 	fs.logger.Info("fuse-readdirall", "Got root request")
 
 	var out []fuse.Dirent
-	_, _, data, err := fs.provider.Fetch("/")
+	entries, err := fs.provider.List("/")
 	if err == nuggdb.ErrPathNotFound {
 		return out, nil
 	} else if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fs.logger.Error("fuse-readdirall", "provider.List(/) Failed: ", err)
 		return out, fuse.EIO
 	}
-	for _, entry := range strings.Split(string(data), "\n") { //TODO: Refactor the fetch n split to occur in the data source/sink
-		if entry != "" {
-			out = append(out, fuse.Dirent{Inode: uint64(fs.getInode(entry)), Name: path.Base(entry), Type: fuse.DT_File})
+	for _, entry := range entries {
+		fmt.Println(entry.Identifier())
+		if entry.IsDirectory() {
+			out = append(out, fuse.Dirent{Inode: uint64(fs.getInode(entry.Identifier())), Name: path.Base(entry.Identifier()), Type: fuse.DT_Dir})
+		} else {
+			out = append(out, fuse.Dirent{Inode: uint64(fs.getInode(entry.Identifier())), Name: path.Base(entry.Identifier()), Type: fuse.DT_File})
 		}
 	}
 	fmt.Println(out)
@@ -116,4 +136,36 @@ func (fs *FS) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 	fs.provider.Store("/"+req.Name, []byte{})
 	f := fs.getFile("/" + req.Name)
 	return f, f, fuse.EIO
+}
+
+// Mkdir implements the NodeMkdirer interface. It is called to make a new directory.
+func (fs *FS) Mkdir(ctx context.Context, req *fuse.MkdirRequest) (fs.Node, error) {
+	fs.logger.Info("fuse-mkdir", "Got root request for: ", req.Name)
+	if strings.Contains(req.Name, "/") {
+		fs.logger.Error("fuse-mkdir", "Cannot create node which contains slashes: ", req.Name)
+		return nil, fuse.EPERM
+	}
+
+	_, _, err := fs.provider.Mkdir("/" + req.Name)
+	if err == nil {
+		return fs.getDir("/" + req.Name), nil
+	}
+	fs.logger.Error("fuse-mkdir", "provider.Mkdir(/"+req.Name+") failed: ", err)
+	return nil, fuse.EIO
+}
+
+// Remove implements NodeRemover, which allows the removal of files.
+func (fs *FS) Remove(ctx context.Context, req *fuse.RemoveRequest) error {
+	fs.logger.Info("fuse-remove", "Got root request for: ", req.Name)
+	if strings.Contains(req.Name, "/") {
+		fs.logger.Error("fuse-remove", "Cannot remove node which contains slashes: ", req.Name)
+		return fuse.EPERM
+	}
+
+	err := fs.provider.Delete("/" + req.Name)
+	if err != nil {
+		fs.logger.Error("fuse-remove", "provider.Delete(/"+req.Name+") Failed: ", err)
+		return fuse.EIO
+	}
+	return nil
 }

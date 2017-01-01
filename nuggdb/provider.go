@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"path"
-	"strings"
 
 	"github.com/twitchyliquid64/nugget"
 	"github.com/twitchyliquid64/nugget/logger"
@@ -66,7 +65,57 @@ func (p *Provider) ReadData(chunkID nugget.ChunkID) ([]byte, error) {
 	return p.chunkstore.Lookup(chunkID)
 }
 
-func (p *Provider) appendDirectoryEntry(fPath string) error {
+// Mkdir creates and commits a new directory, returning the entryID and metadata of the directory file.
+func (p *Provider) Mkdir(fPath string) (nugget.EntryID, nugget.NodeMetadata, error) {
+	eID, meta, newFile, err := p.store(fPath, dirEntries{}.Serialize(), true)
+	if err == nil && newFile {
+		err = p.appendDirectoryEntry(fPath, true)
+	}
+	return eID, meta, err
+}
+
+//Delete deletes a file or directory.
+func (p *Provider) Delete(fPath string) error {
+	eID, errLookup := p.Lookup(fPath)
+	if errLookup != nil {
+		return errLookup
+	}
+
+	meta, errMeta := p.ReadMeta(eID)
+	if errMeta != nil {
+		return errMeta
+	}
+
+	//Remove the link first, we can always put it back if we need to
+	pathErr := p.pathstore.Delete(fPath)
+	if pathErr != nil {
+		return pathErr //failure without affecting consistency
+	}
+
+	//Remove the metadata next, we can always put it back if we need to
+	entryIDErr := p.metastore.Delete(eID)
+	if entryIDErr != nil {
+		p.pathstore.Commit(fPath, eID) //Rollback pathstore deletion
+		return entryIDErr              //failure without affecting consistency
+	}
+
+	//Delete the data, if this works we are done
+	chunkErr := p.chunkstore.Delete(meta.GetDataLocality().Chunks()[0])
+	if chunkErr != nil {
+		p.metastore.Commit(EntryMetadata{
+			EntryID:  eID,
+			IsDir:    meta.IsDirectory(),
+			Lname:    meta.LocalName(),
+			Size:     meta.GetSize(),
+			Locality: LocalityInfo{ChunkID: meta.GetDataLocality().Chunks()[0]},
+		}) //Rollback
+		p.pathstore.Commit(fPath, eID) //Rollback
+		return chunkErr                //failure without affecting consistency
+	}
+	return p.removeDirectoryEntry(fPath)
+}
+
+func (p *Provider) removeDirectoryEntry(fPath string) error {
 	dirPath := path.Dir(fPath)
 	_, meta, data, err := p.Fetch(dirPath)
 	if err != nil && err != ErrPathNotFound {
@@ -77,15 +126,52 @@ func (p *Provider) appendDirectoryEntry(fPath string) error {
 		}
 	}
 
-	entries := strings.Split(string(data), "\n")
+	var entries []dirEntry
+	if len(data) > 0 {
+		entries, err = deserializeDirEntries(data)
+		if err != nil {
+			return err
+		}
+	}
+
+	var outEntries []dirEntry
 	for _, entry := range entries {
-		if entry == fPath {
+		if entry.Name != fPath {
+			outEntries = append(outEntries, entry)
+		}
+	}
+
+	_, _, _, err = p.store(dirPath, dirEntries(outEntries).Serialize(), true)
+	return err
+}
+
+func (p *Provider) appendDirectoryEntry(fPath string, isDir bool) error {
+	dirPath := path.Dir(fPath)
+	_, meta, data, err := p.Fetch(dirPath)
+	if err != nil && err != ErrPathNotFound {
+		return err
+	} else if err == nil {
+		if !meta.IsDirectory() {
+			return errors.New("Cannot make file on top of a non-directory path")
+		}
+	}
+
+	var entries []dirEntry
+	if len(data) > 0 {
+		entries, err = deserializeDirEntries(data)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, entry := range entries {
+		if entry.Name == fPath {
 			return nil
 		}
 	}
 	//doesnt exist, add it
-	entries = append(entries, fPath)
-	_, _, _, err = p.store(dirPath, []byte(strings.Join(entries, "\n")), true)
+	entries = append(entries, dirEntry{Name: fPath, IsDir: isDir})
+	_, _, _, err = p.store(dirPath, dirEntries(entries).Serialize(), true)
 	return err
 }
 
@@ -93,7 +179,7 @@ func (p *Provider) appendDirectoryEntry(fPath string) error {
 func (p *Provider) Store(fPath string, data []byte) (nugget.EntryID, nugget.NodeMetadata, error) {
 	eID, meta, newFile, err := p.store(fPath, data, false)
 	if err == nil && newFile {
-		err = p.appendDirectoryEntry(fPath)
+		err = p.appendDirectoryEntry(fPath, false)
 	}
 	return eID, meta, err
 }
@@ -184,6 +270,27 @@ func (p *Provider) deleteGracefullyOrRollbackNewFile(fPath string, newChunkID nu
 		return err
 	}
 	return nil
+}
+
+// List returns information about the directory at fPath.
+func (p *Provider) List(fPath string) ([]nugget.DirEntry, error) {
+	_, meta, data, err := p.Fetch(fPath)
+	if err != nil {
+		return nil, err
+	}
+	if !meta.IsDirectory() {
+		return nil, errors.New("Cannot List on non-directory file")
+	}
+	entries, err := deserializeDirEntries(data)
+	if err != nil {
+		return nil, err
+	}
+
+	b := make([]nugget.DirEntry, len(entries))
+	for i := range entries {
+		b[i] = &entries[i]
+	}
+	return b, err
 }
 
 // Close closes all underlying files and makes the provider unusable.

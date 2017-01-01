@@ -14,11 +14,14 @@ type DataSource interface {
 	ReadMeta(entry EntryID) (NodeMetadata, error)
 	ReadData(node ChunkID) ([]byte, error)
 	Fetch(path string) (EntryID, NodeMetadata, []byte, error)
+	List(path string) ([]DirEntry, error)
 }
 
 // DataSink represents entities who can accept data writes.
 type DataSink interface {
 	Store(path string, data []byte) (EntryID, NodeMetadata, error)
+	Mkdir(path string) (EntryID, NodeMetadata, error)
+	Delete(path string) error
 	Close() error
 }
 
@@ -43,4 +46,10 @@ type LocalityInfo interface {
 	IsChunked() bool
 	Chunks() []ChunkID
 	ChunkAtIndex(int) ChunkID
+}
+
+// DirEntry represents a file/directory stored in a directory.
+type DirEntry interface {
+	Identifier() string
+	IsDirectory() bool
 }

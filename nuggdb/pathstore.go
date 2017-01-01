@@ -86,3 +86,12 @@ func (ps *Pathstore) Forge(path string) (nugget.EntryID, error) {
 func (ps *Pathstore) Close() error {
 	return ps.db.Close()
 }
+
+// Delete removes a path entry from the pathstore. Nil is returned if the path is not mapped.
+func (ps *Pathstore) Delete(path string) error {
+	return ps.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(pathEntryIDBucket))
+		err := b.Delete([]byte(path))
+		return err
+	})
+}
