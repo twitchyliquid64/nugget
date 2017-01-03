@@ -2,7 +2,6 @@ package nuggtofuse
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -41,14 +40,12 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 		return out, fuse.EIO
 	}
 	for _, entry := range entries {
-		fmt.Println(entry.Identifier())
 		if entry.IsDirectory() {
 			out = append(out, fuse.Dirent{Inode: uint64(d.fs.getInode(entry.Identifier())), Name: path.Base(entry.Identifier()), Type: fuse.DT_Dir})
 		} else {
 			out = append(out, fuse.Dirent{Inode: uint64(d.fs.getInode(entry.Identifier())), Name: path.Base(entry.Identifier()), Type: fuse.DT_File})
 		}
 	}
-	fmt.Println(out)
 	return out, nil
 }
 
@@ -86,7 +83,7 @@ func (d *Dir) Create(ctx context.Context, req *fuse.CreateRequest, resp *fuse.Cr
 	d.fs.logger.Info("fuse-create", "Name: ", path.Join(d.fullPath, req.Name))
 	d.fs.provider.Store(path.Join(d.fullPath, req.Name), []byte{})
 	f := d.fs.getFile(path.Join(d.fullPath, req.Name))
-	return f, f, fuse.EIO
+	return f, f, nil
 }
 
 // Mkdir implements the NodeMkdirer interface. It is called to make a new directory.
