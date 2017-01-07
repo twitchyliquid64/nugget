@@ -1,5 +1,7 @@
 package logger
 
+// logger is how log messages are processed in nugget.
+
 import (
 	"fmt"
 	"io"

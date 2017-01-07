@@ -1,5 +1,9 @@
 package nuggdb
 
+// nuggdb implements the data storage backend for nugget/nuggFS.
+// put simply, it takes our programming interface and stores it to
+// disk using boltdb (key-value store).
+
 import (
 	"crypto/rand"
 	"errors"

@@ -3,6 +3,7 @@ package packet
 import (
 	"encoding/gob"
 	"io"
+	"sync"
 	"time"
 )
 
@@ -30,4 +31,6 @@ type Transiever struct {
 
 	reader io.Reader
 	writer io.Writer
+
+	sendLock sync.Mutex
 }

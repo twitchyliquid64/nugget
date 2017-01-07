@@ -1,18 +1,19 @@
 package main
 
+// nugg is a client for remote nuggFS.
+// It needs to be given an address, a CA certificate, and a client certificate/key.
+// It will connect to the remote using github.com/twitchyliquid64/nugget/nugg/client
+// Which it will translate into a fuse filesystem using github.com/twitchyliquid64/nugget/nuggtofuse
+
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"bazil.org/fuse"
-	"bazil.org/fuse/fs"
+	"github.com/twitchyliquid64/nugget/logger"
 	"github.com/twitchyliquid64/nugget/nugg/client"
-	"github.com/twitchyliquid64/nugget/sysstatfs"
 )
 
 var connectAddrVar string
@@ -45,61 +46,16 @@ func flags() {
 func main() {
 	flags()
 
-	_, err := client.Open(connectAddrVar, certPemPathVar, keyPemPathVar, caCertPemPathVar)
+	l := logger.New(os.Stdout, os.Stderr)
+	fatalErrChan := make(chan error)
+
+	_, err := client.Open(connectAddrVar, certPemPathVar, keyPemPathVar, caCertPemPathVar, l, fatalErrChan)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error connecting to remote: %s\n", err)
+		l.Error("main", "Could not connect to remote: ", err)
+		os.Exit(1)
 	}
 
-	time.Sleep(10 * time.Second)
-	//doMount()
-	//waitInterrupt(flag.Arg(0))
-}
-
-func doMount() {
-	c, err := mount(flag.Arg(0))
-	defer c.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	sysfs := sysstatfs.Make()
-
-	go func() {
-		err := fs.Serve(c, sysfs)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	// check if the mount process has an error to report
-	<-c.Ready
-	if err := c.MountError; err != nil {
-		log.Fatal(err)
-	}
-}
-
-func mount(name string) (*fuse.Conn, error) {
-	return fuse.Mount(
-		name,
-		fuse.FSName("nugg"),
-		fuse.Subtype("nuggetfs"),
-		fuse.LocalVolume(),
-		fuse.VolumeName("nugg"),
-	)
-}
-
-func waitInterrupt(mountPath string) {
-	sig := make(chan os.Signal, 2)
-	done := make(chan bool, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sig
-		done <- true
-	}()
-	<-done
-	log.Println("Now shutting down.")
-	fuse.Unmount(mountPath)
-	// Main's defer c.Close should do final cleanup
+	waitInterrupt(fatalErrChan, l)
 }
 
 func checkCertFiles() {
@@ -122,4 +78,21 @@ func fileExists(path string) bool {
 		return false
 	}
 	return true
+}
+
+func waitInterrupt(fatalErrChan chan error, l *logger.Logger) {
+	sig := make(chan os.Signal, 2)
+	done := make(chan bool, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sig
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		l.Info("main", "Recieved interrupt, shutting down.")
+	case err := <-fatalErrChan:
+		l.Error("main", "Fatal internal error: ", err)
+	}
 }

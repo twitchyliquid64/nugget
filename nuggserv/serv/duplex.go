@@ -1,9 +1,7 @@
 package serv
 
 import (
-	"fmt"
 	"net"
-	"os"
 
 	"github.com/twitchyliquid64/nugget/packet"
 )
@@ -20,17 +18,41 @@ type Duplex struct {
 func (c *Duplex) ClientReadLoop() {
 	trans := packet.MakeTransiever(c.Conn, c.Conn)
 	for {
-		t, err := trans.Decode()
+		pktType, err := trans.Decode()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Client read err: %s\n", err)
+			c.Manager.logger.Warning("client-read", err)
 			return
 		}
-		fmt.Println(t)
+
+		var processingError error
+		switch pktType {
+		case packet.PktPing:
+			processingError = c.processPingPkt(trans)
+		}
+
+		if processingError != nil {
+			c.Manager.logger.Error("client-read", processingError)
+			return
+		}
 	}
 }
 
-// ClientWriteLoop is the routine responsible for encoding packets and transmitting
-// them to the remote end.
-func (c *Duplex) ClientWriteLoop() {
+func (c *Duplex) processPingPkt(trans *packet.Transiever) error {
+	var err error
+	var ping packet.PingPong
 
+	err = trans.GetPing(&ping)
+	if err != nil {
+		return err
+	}
+	err = trans.WritePong(&ping)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// ClientWriteLoop is the routine responsible for encoding packets and transmitting
+// them to the remote end. TODO: Change it to the routine servicing a response write channel?
+func (c *Duplex) ClientWriteLoop() {
 }

@@ -1,11 +1,15 @@
 package main
 
+// nuggserv implements a nuggFS network server.
+
 import (
 	"flag"
 	"fmt"
 	"os"
-	"time"
+	"os/signal"
+	"syscall"
 
+	"github.com/twitchyliquid64/nugget/logger"
 	"github.com/twitchyliquid64/nugget/nuggserv/serv"
 )
 
@@ -36,19 +40,25 @@ func flags() {
 func main() {
 	flags()
 	checkCertFiles()
-	_, err := serv.NewServer(listenerAddrVar, certPemPathVar, keyPemPathVar, caCertPemPathVar)
+	l := logger.New(os.Stdout, os.Stderr)
+
+	s, err := serv.NewServer(listenerAddrVar, certPemPathVar, keyPemPathVar, caCertPemPathVar, l)
 
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error initializing network: %s\n", err)
+		l.Error("server", "Error initializing network: ", err)
 		os.Exit(1)
+	} else {
+		l.Info("server", "Started listening on ", listenerAddrVar)
 	}
-
-	time.Sleep(time.Second * 10)
+	defer s.Close()
 
 	// Start our core internals: PathStore, NodeStore, ChunkStore
 	// TODO: Implement these essentials
 
 	// Start our routing internals : component mapping requests to functions with IDs
+
+	fatalErrChan := make(chan error)
+	waitInterrupt(fatalErrChan, l)
 }
 
 func checkCertFiles() {
@@ -71,4 +81,21 @@ func fileExists(path string) bool {
 		return false
 	}
 	return true
+}
+
+func waitInterrupt(fatalErrChan chan error, l *logger.Logger) {
+	sig := make(chan os.Signal, 2)
+	done := make(chan bool, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sig
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		l.Info("main", "Recieved interrupt, shutting down.")
+	case err := <-fatalErrChan:
+		l.Error("main", "Fatal internal error: ", err)
+	}
 }

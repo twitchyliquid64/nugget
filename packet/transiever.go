@@ -34,7 +34,22 @@ func (t *Transiever) GetPing(ping *PingPong) error {
 
 // WritePing writes a ping packet to the remote end.
 func (t *Transiever) WritePing(ping *PingPong) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
 	err := t.packetEncoder.Encode(PktPing)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(ping)
+}
+
+// WritePong writes a ping packet to the remote end.
+func (t *Transiever) WritePong(ping *PingPong) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktPong)
 	if err != nil {
 		return err
 	}
