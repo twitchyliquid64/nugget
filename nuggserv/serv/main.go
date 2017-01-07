@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/twitchyliquid64/nugget"
 	"github.com/twitchyliquid64/nugget/logger"
 )
 
@@ -24,7 +25,6 @@ func (m *Manager) mainloop() {
 		} else {
 			remoteConn := initClient(conn, m)
 			go remoteConn.ClientReadLoop()
-			go remoteConn.ClientWriteLoop()
 		}
 	}
 }
@@ -48,7 +48,7 @@ func initNetwork(listenAddr, certPemPath, keyPemPath, caCertPath string) (net.Li
 // NewServer initializes a network server on listeAddr, accepting connections which can authenticate themselves
 // as based of the certificate at caCertPath. The TLS server authenticates itself using the cert/key at
 // certPemPath and keyPemPath respectively.
-func NewServer(listenAddr, certPemPath, keyPemPath, caCertPath string, logger *logger.Logger) (*Manager, error) {
+func NewServer(listenAddr, certPemPath, keyPemPath, caCertPath string, provider nugget.DataSourceSink, logger *logger.Logger) (*Manager, error) {
 	listener, err := initNetwork(listenAddr, certPemPath, keyPemPath, caCertPath)
 	if err != nil {
 		return nil, err
@@ -58,6 +58,7 @@ func NewServer(listenAddr, certPemPath, keyPemPath, caCertPath string, logger *l
 		isOnline: true,
 		listener: listener,
 		logger:   logger,
+		provider: provider,
 	}
 
 	go m.mainloop()

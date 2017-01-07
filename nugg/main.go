@@ -49,11 +49,14 @@ func main() {
 	l := logger.New(os.Stdout, os.Stderr)
 	fatalErrChan := make(chan error)
 
-	_, err := client.Open(connectAddrVar, certPemPathVar, keyPemPathVar, caCertPemPathVar, l, fatalErrChan)
+	c, err := client.Open(connectAddrVar, certPemPathVar, keyPemPathVar, caCertPemPathVar, l, fatalErrChan)
 	if err != nil {
 		l.Error("main", "Could not connect to remote: ", err)
 		os.Exit(1)
 	}
+
+	n, err := c.Lookup("/")
+	fmt.Println(n, err)
 
 	waitInterrupt(fatalErrChan, l)
 }

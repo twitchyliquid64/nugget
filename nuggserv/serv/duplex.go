@@ -3,6 +3,7 @@ package serv
 import (
 	"net"
 
+	"github.com/twitchyliquid64/nugget/nuggdb"
 	"github.com/twitchyliquid64/nugget/packet"
 )
 
@@ -28,6 +29,8 @@ func (c *Duplex) ClientReadLoop() {
 		switch pktType {
 		case packet.PktPing:
 			processingError = c.processPingPkt(trans)
+		case packet.PktLookup:
+			processingError = c.processLookupPkt(trans)
 		}
 
 		if processingError != nil {
@@ -35,6 +38,33 @@ func (c *Duplex) ClientReadLoop() {
 			return
 		}
 	}
+}
+
+func (c *Duplex) processLookupPkt(trans *packet.Transiever) error {
+	var lookupRequest packet.LookupReq
+	err := trans.GetLookupReq(&lookupRequest)
+	if err != nil {
+		return err
+	}
+	c.Manager.logger.Info("client-read", "Got Lookup request for ", lookupRequest.Path)
+
+	var lookupResponse packet.LookupResp
+	lookupResponse.ID = lookupRequest.ID
+
+	lookupResponse.EntryID, err = c.Manager.provider.Lookup(lookupRequest.Path)
+	if err != nil {
+		if err == nuggdb.ErrPathNotFound {
+			lookupResponse.ErrorCode = packet.ErrNoEntity
+		} else {
+			lookupResponse.ErrorCode = packet.ErrUnspec
+		}
+	}
+
+	err = trans.WriteLookupResp(&lookupResponse)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Duplex) processPingPkt(trans *packet.Transiever) error {
@@ -50,9 +80,4 @@ func (c *Duplex) processPingPkt(trans *packet.Transiever) error {
 		return err
 	}
 	return nil
-}
-
-// ClientWriteLoop is the routine responsible for encoding packets and transmitting
-// them to the remote end. TODO: Change it to the routine servicing a response write channel?
-func (c *Duplex) ClientWriteLoop() {
 }

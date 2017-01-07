@@ -4,6 +4,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/twitchyliquid64/nugget"
 	"github.com/twitchyliquid64/nugget/logger"
 )
 
@@ -14,4 +15,5 @@ type Manager struct {
 	isOnline bool
 	listener net.Listener
 	logger   *logger.Logger
+	provider nugget.DataSourceSink
 }

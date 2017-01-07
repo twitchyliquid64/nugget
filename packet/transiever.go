@@ -55,3 +55,37 @@ func (t *Transiever) WritePong(ping *PingPong) error {
 	}
 	return t.packetEncoder.Encode(ping)
 }
+
+// WriteLookupReq writes a Lookup RPC packet to the remote end.
+func (t *Transiever) WriteLookupReq(l *LookupReq) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktLookup)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+// GetLookupReq decodes a LookupReq packet from the network.
+func (t *Transiever) GetLookupReq(l *LookupReq) error {
+	return t.packetDecoder.Decode(l)
+}
+
+// WriteLookupResp writes the response to a Lookup RPC packet to the remote end.
+func (t *Transiever) WriteLookupResp(l *LookupResp) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktLookupResp)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+// GetLookupResp decodes a LookupReq packet from the network.
+func (t *Transiever) GetLookupResp(l *LookupResp) error {
+	return t.packetDecoder.Decode(l)
+}

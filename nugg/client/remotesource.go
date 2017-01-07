@@ -24,6 +24,9 @@ type RemoteSource struct {
 	fatal       error      //set if there was a fatal error on this RemoteSource
 
 	latency time.Duration //current latency - updated periodically by keepAliveRoutine
+
+	pendingLock sync.Mutex
+	pending     map[uint64]*Call
 }
 
 // Open starts a connection to the given nuggFS remote source using the
@@ -40,6 +43,7 @@ func Open(addr, certPemPath, keyPemPath, caCertPath string, l *logger.Logger, fa
 		transiever:  packet.MakeTransiever(conn, conn),
 		logger:      l,
 		onFatalChan: fatalErr,
+		pending:     map[uint64]*Call{},
 	}
 	go rs.readServiceRoutine()
 	go rs.keepAliveRoutine()
@@ -83,6 +87,9 @@ func (c *RemoteSource) readServiceRoutine() {
 			processingError = c.transiever.GetPing(&pong)
 			c.latency = time.Now().Sub(pong.Sent)
 			fmt.Println("Latency: ", c.latency)
+
+		case packet.PktLookupResp:
+			processingError = c.processLookupResponse()
 		}
 
 		if processingError != nil {
@@ -91,6 +98,17 @@ func (c *RemoteSource) readServiceRoutine() {
 			return
 		}
 	}
+}
+
+func (c *RemoteSource) processLookupResponse() error {
+	var lookupResponse packet.LookupResp
+	err := c.transiever.GetLookupResp(&lookupResponse)
+	if err != nil {
+		return err
+	}
+
+	c.dispatchCallResponse(lookupResponse.ID, lookupResponse)
+	return nil
 }
 
 func (c *RemoteSource) fatalInternalError(err error) {

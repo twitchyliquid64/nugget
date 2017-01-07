@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/twitchyliquid64/nugget/logger"
+	"github.com/twitchyliquid64/nugget/nuggdb"
 	"github.com/twitchyliquid64/nugget/nuggserv/serv"
 )
 
@@ -20,6 +21,7 @@ var keyPemPathVar string
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s <path-to-data-dir>\n", os.Args[0])
 	flag.PrintDefaults()
 }
 
@@ -31,7 +33,7 @@ func flags() {
 	flag.Usage = usage
 	flag.Parse()
 
-	if listenerAddrVar == "" {
+	if listenerAddrVar == "" || flag.NArg() < 1 {
 		usage()
 		os.Exit(1)
 	}
@@ -42,7 +44,13 @@ func main() {
 	checkCertFiles()
 	l := logger.New(os.Stdout, os.Stderr)
 
-	s, err := serv.NewServer(listenerAddrVar, certPemPathVar, keyPemPathVar, caCertPemPathVar, l)
+	provider, err := nuggdb.Create(flag.Arg(0), l)
+	if err != nil {
+		l.Error("server", "Error initializing data storage: ", err)
+		os.Exit(1)
+	}
+
+	s, err := serv.NewServer(listenerAddrVar, certPemPathVar, keyPemPathVar, caCertPemPathVar, provider, l)
 
 	if err != nil {
 		l.Error("server", "Error initializing network: ", err)

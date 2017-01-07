@@ -40,3 +40,108 @@ func TestTransieverEncodesDecodesPingCorrectly(t *testing.T) {
 		t.Error("Incorrect packet value")
 	}
 }
+
+func TestTransieverEncodesDecodesPongCorrectly(t *testing.T) {
+	var dataChannel bytes.Buffer
+	transiever := MakeTransiever(&dataChannel, &dataChannel)
+
+	err := transiever.WritePong(&PingPong{Sent: time.Date(2006, 2, 2, 4, 1, 0, 0, time.UTC)})
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if dataChannel.Len() <= 0 {
+		t.Error("Expected data to be written")
+	}
+
+	var out PingPong
+	pktType, err := transiever.Decode()
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	if pktType != PktPong {
+		t.Error("Expected PktPong packet type")
+	}
+
+	err = transiever.GetPing(&out)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if out.Sent.Unix() != time.Date(2006, 2, 2, 4, 1, 0, 0, time.UTC).Unix() {
+		t.Error("Incorrect packet value")
+	}
+}
+
+func TestTransieverEncodesDecodesLookupRPCCorrectly(t *testing.T) {
+	var dataChannel bytes.Buffer
+	transiever := MakeTransiever(&dataChannel, &dataChannel)
+
+	err := transiever.WriteLookupReq(&LookupReq{ID: 455243, Path: "/lol"})
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if dataChannel.Len() <= 0 {
+		t.Error("Expected data to be written")
+	}
+
+	var out LookupReq
+	pktType, err := transiever.Decode()
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	if pktType != PktLookup {
+		t.Error("Expected PktLookup packet type")
+	}
+
+	err = transiever.GetLookupReq(&out)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if out.ID != 455243 || out.Path != "/lol" {
+		t.Error("Incorrect packet value")
+	}
+}
+
+func TestTransieverEncodesDecodesLookupRPCResponseCorrectly(t *testing.T) {
+	var dataChannel bytes.Buffer
+	transiever := MakeTransiever(&dataChannel, &dataChannel)
+
+	err := transiever.WriteLookupResp(&LookupResp{ID: 455243})
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if dataChannel.Len() <= 0 {
+		t.Error("Expected data to be written")
+	}
+
+	var out LookupResp
+	pktType, err := transiever.Decode()
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	if pktType != PktLookupResp {
+		t.Error("Expected PktLookupResp packet type")
+	}
+
+	err = transiever.GetLookupResp(&out)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if out.ID != 455243 {
+		t.Error("Incorrect packet value")
+	}
+}
