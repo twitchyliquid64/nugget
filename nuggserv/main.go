@@ -44,14 +44,16 @@ func main() {
 	checkCertFiles()
 	l := logger.New(os.Stdout, os.Stderr)
 
+	// open our backing data stores
 	provider, err := nuggdb.Create(flag.Arg(0), l)
 	if err != nil {
 		l.Error("server", "Error initializing data storage: ", err)
 		os.Exit(1)
 	}
+	defer provider.Close()
 
+	// open the network
 	s, err := serv.NewServer(listenerAddrVar, certPemPathVar, keyPemPathVar, caCertPemPathVar, provider, l)
-
 	if err != nil {
 		l.Error("server", "Error initializing network: ", err)
 		os.Exit(1)
@@ -59,11 +61,6 @@ func main() {
 		l.Info("server", "Started listening on ", listenerAddrVar)
 	}
 	defer s.Close()
-
-	// Start our core internals: PathStore, NodeStore, ChunkStore
-	// TODO: Implement these essentials
-
-	// Start our routing internals : component mapping requests to functions with IDs
 
 	fatalErrChan := make(chan error)
 	waitInterrupt(fatalErrChan, l)

@@ -58,6 +58,9 @@ func main() {
 	n, err := c.Lookup("/")
 	fmt.Println(n, err)
 
+	meta, err := c.ReadMeta(n)
+	fmt.Println(meta, err)
+
 	waitInterrupt(fatalErrChan, l)
 }
 

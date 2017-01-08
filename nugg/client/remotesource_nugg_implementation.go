@@ -38,3 +38,26 @@ func (c *RemoteSource) Lookup(path string) (nugget.EntryID, error) {
 		return lookupResp.EntryID, nil
 	}
 }
+
+// ReadMeta implements nugget.DataSource
+func (c *RemoteSource) ReadMeta(entry nugget.EntryID) (nugget.NodeMetadata, error) {
+	responseChan := make(chan interface{})
+	call := c.registerRPC(responseChan)
+	defer c.unregisterRPC(call)
+
+	var readMetaRequest packet.ReadMetaReq
+	readMetaRequest.ID = call.id
+	readMetaRequest.EntryID = entry
+	c.transiever.WriteReadMetaReq(&readMetaRequest)
+
+	select {
+	case <-time.After(defaultTimeout):
+		return nil, ErrTimeout
+	case r := <-responseChan:
+		readMetaResp := r.(packet.ReadMetaResp)
+		if readMetaResp.ErrorCode != packet.ErrNoError {
+			return nil, packet.ErrorCodeToErr(readMetaResp.ErrorCode)
+		}
+		return &readMetaResp.Meta, nil
+	}
+}

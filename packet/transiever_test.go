@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 	"time"
+
+	"github.com/twitchyliquid64/nugget"
 )
 
 func TestTransieverEncodesDecodesPingCorrectly(t *testing.T) {
@@ -136,6 +138,76 @@ func TestTransieverEncodesDecodesLookupRPCResponseCorrectly(t *testing.T) {
 	}
 
 	err = transiever.GetLookupResp(&out)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if out.ID != 455243 {
+		t.Error("Incorrect packet value")
+	}
+}
+
+func TestTransieverEncodesDecodesReadMetaRPCResponseCorrectly(t *testing.T) {
+	var dataChannel bytes.Buffer
+	transiever := MakeTransiever(&dataChannel, &dataChannel)
+
+	err := transiever.WriteReadMetaReq(&ReadMetaReq{ID: 455243, EntryID: nugget.EntryID{1, 2, 3}})
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if dataChannel.Len() <= 0 {
+		t.Error("Expected data to be written")
+	}
+
+	var out ReadMetaReq
+	pktType, err := transiever.Decode()
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	if pktType != PktReadMeta {
+		t.Error("Expected PktReadMeta packet type")
+	}
+
+	err = transiever.GetReadMetaReq(&out)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if (out.ID != 455243 || out.EntryID != nugget.EntryID{1, 2, 3}) {
+		t.Error("Incorrect packet value")
+	}
+}
+
+func TestTransieverEncodesDecodesReadMetaRespRPCResponseCorrectly(t *testing.T) {
+	var dataChannel bytes.Buffer
+	transiever := MakeTransiever(&dataChannel, &dataChannel)
+
+	err := transiever.WriteReadMetaResp(&ReadMetaResp{ID: 455243})
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if dataChannel.Len() <= 0 {
+		t.Error("Expected data to be written")
+	}
+
+	var out ReadMetaResp
+	pktType, err := transiever.Decode()
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	if pktType != PktReadMetaResp {
+		t.Error("Expected PktReadMetaResp packet type")
+	}
+
+	err = transiever.GetReadMetaResp(&out)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()

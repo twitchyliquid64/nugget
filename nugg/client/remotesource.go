@@ -90,6 +90,9 @@ func (c *RemoteSource) readServiceRoutine() {
 
 		case packet.PktLookupResp:
 			processingError = c.processLookupResponse()
+
+		case packet.PktReadMetaResp:
+			processingError = c.processReadMetaResponse()
 		}
 
 		if processingError != nil {
@@ -98,6 +101,17 @@ func (c *RemoteSource) readServiceRoutine() {
 			return
 		}
 	}
+}
+
+func (c *RemoteSource) processReadMetaResponse() error {
+	var readMetaResponse packet.ReadMetaResp
+	err := c.transiever.GetReadMetaResp(&readMetaResponse)
+	if err != nil {
+		return err
+	}
+
+	c.dispatchCallResponse(readMetaResponse.ID, readMetaResponse)
+	return nil
 }
 
 func (c *RemoteSource) processLookupResponse() error {

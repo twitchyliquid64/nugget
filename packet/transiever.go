@@ -89,3 +89,37 @@ func (t *Transiever) WriteLookupResp(l *LookupResp) error {
 func (t *Transiever) GetLookupResp(l *LookupResp) error {
 	return t.packetDecoder.Decode(l)
 }
+
+// WriteReadMetaReq writes a ReadMeta RPC packet to the remote end.
+func (t *Transiever) WriteReadMetaReq(l *ReadMetaReq) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktReadMeta)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+// GetReadMetaReq decodes a ReadMetaReq packet from the network.
+func (t *Transiever) GetReadMetaReq(l *ReadMetaReq) error {
+	return t.packetDecoder.Decode(l)
+}
+
+// WriteReadMetaResp writes a ReadMetaResp RPC packet to the remote end.
+func (t *Transiever) WriteReadMetaResp(l *ReadMetaResp) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktReadMetaResp)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+// GetReadMetaResp decodes a ReadMetaResp packet from the network.
+func (t *Transiever) GetReadMetaResp(l *ReadMetaResp) error {
+	return t.packetDecoder.Decode(l)
+}

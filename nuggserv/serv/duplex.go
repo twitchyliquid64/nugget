@@ -31,6 +31,8 @@ func (c *Duplex) ClientReadLoop() {
 			processingError = c.processPingPkt(trans)
 		case packet.PktLookup:
 			processingError = c.processLookupPkt(trans)
+		case packet.PktReadMeta:
+			processingError = c.processReadMetaPkt(trans)
 		}
 
 		if processingError != nil {
@@ -38,6 +40,35 @@ func (c *Duplex) ClientReadLoop() {
 			return
 		}
 	}
+}
+
+func (c *Duplex) processReadMetaPkt(trans *packet.Transiever) error {
+	var readMetaRequest packet.ReadMetaReq
+	err := trans.GetReadMetaReq(&readMetaRequest)
+	if err != nil {
+		return err
+	}
+	c.Manager.logger.Info("client-read", "Got ReadMeta request for ", readMetaRequest.EntryID)
+
+	var readMetaResponse packet.ReadMetaResp
+	readMetaResponse.ID = readMetaRequest.ID
+
+	meta, err := c.Manager.provider.ReadMeta(readMetaRequest.EntryID)
+	if err != nil {
+		if err == nuggdb.ErrMetaNotFound {
+			readMetaResponse.ErrorCode = packet.ErrNoEntity
+		} else {
+			readMetaResponse.ErrorCode = packet.ErrUnspec
+		}
+	} else {
+		readMetaResponse.Meta = *(meta.(*nuggdb.EntryMetadata))
+	}
+
+	err = trans.WriteReadMetaResp(&readMetaResponse)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Duplex) processLookupPkt(trans *packet.Transiever) error {

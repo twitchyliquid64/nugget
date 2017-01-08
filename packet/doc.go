@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/twitchyliquid64/nugget"
+	"github.com/twitchyliquid64/nugget/nuggdb"
 )
 
 // packet contains structs for representing data on the wire, along with serializing / deserializing it.
@@ -22,6 +23,8 @@ const (
 	PktPong
 	PktLookup
 	PktLookupResp
+	PktReadMeta
+	PktReadMetaResp
 )
 
 // ErrorCode represents classes of RPC failures.
@@ -52,7 +55,19 @@ type LookupResp struct {
 	ID        uint64
 	EntryID   nugget.EntryID
 	ErrorCode ErrorCode
-	ErrorText string
+}
+
+// ReadMetaReq represents a ReadMeta RPC on the wire
+type ReadMetaReq struct {
+	ID      uint64
+	EntryID nugget.EntryID
+}
+
+// ReadMetaResp respresents the response to a ReadMeta RPC on the wire
+type ReadMetaResp struct {
+	ID        uint64
+	ErrorCode ErrorCode
+	Meta      nuggdb.EntryMetadata
 }
 
 // Transiever takes a network bytestream and interprets it into packet structures.
