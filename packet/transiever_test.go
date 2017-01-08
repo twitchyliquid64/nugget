@@ -148,7 +148,7 @@ func TestTransieverEncodesDecodesLookupRPCResponseCorrectly(t *testing.T) {
 	}
 }
 
-func TestTransieverEncodesDecodesReadMetaRPCResponseCorrectly(t *testing.T) {
+func TestTransieverEncodesDecodesReadMetaRPCCorrectly(t *testing.T) {
 	var dataChannel bytes.Buffer
 	transiever := MakeTransiever(&dataChannel, &dataChannel)
 
@@ -183,7 +183,7 @@ func TestTransieverEncodesDecodesReadMetaRPCResponseCorrectly(t *testing.T) {
 	}
 }
 
-func TestTransieverEncodesDecodesReadMetaRespRPCResponseCorrectly(t *testing.T) {
+func TestTransieverEncodesDecodesReadMetaRPCResponseCorrectly(t *testing.T) {
 	var dataChannel bytes.Buffer
 	transiever := MakeTransiever(&dataChannel, &dataChannel)
 
@@ -208,6 +208,76 @@ func TestTransieverEncodesDecodesReadMetaRespRPCResponseCorrectly(t *testing.T) 
 	}
 
 	err = transiever.GetReadMetaResp(&out)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if out.ID != 455243 {
+		t.Error("Incorrect packet value")
+	}
+}
+
+func TestTransieverEncodesDecodesListRPCCorrectly(t *testing.T) {
+	var dataChannel bytes.Buffer
+	transiever := MakeTransiever(&dataChannel, &dataChannel)
+
+	err := transiever.WriteListReq(&ListReq{ID: 455243, Path: "/cat"})
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if dataChannel.Len() <= 0 {
+		t.Error("Expected data to be written")
+	}
+
+	var out ListReq
+	pktType, err := transiever.Decode()
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	if pktType != PktList {
+		t.Error("Expected PktList packet type")
+	}
+
+	err = transiever.GetListReq(&out)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if out.ID != 455243 || out.Path != "/cat" {
+		t.Error("Incorrect packet value")
+	}
+}
+
+func TestTransieverEncodesDecodesListRPCResponseCorrectly(t *testing.T) {
+	var dataChannel bytes.Buffer
+	transiever := MakeTransiever(&dataChannel, &dataChannel)
+
+	err := transiever.WriteListResp(&ListResp{ID: 455243})
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if dataChannel.Len() <= 0 {
+		t.Error("Expected data to be written")
+	}
+
+	var out ListResp
+	pktType, err := transiever.Decode()
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	if pktType != PktListResp {
+		t.Error("Expected PktListResp packet type")
+	}
+
+	err = transiever.GetListResp(&out)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()

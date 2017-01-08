@@ -33,6 +33,8 @@ func (c *Duplex) ClientReadLoop() {
 			processingError = c.processLookupPkt(trans)
 		case packet.PktReadMeta:
 			processingError = c.processReadMetaPkt(trans)
+		case packet.PktList:
+			processingError = c.processListPkt(trans)
 		}
 
 		if processingError != nil {
@@ -40,6 +42,34 @@ func (c *Duplex) ClientReadLoop() {
 			return
 		}
 	}
+}
+
+func (c *Duplex) processListPkt(trans *packet.Transiever) error {
+	var listRequest packet.ListReq
+	err := trans.GetListReq(&listRequest)
+	if err != nil {
+		return err
+	}
+	c.Manager.logger.Info("client-read", "Got List request for ", listRequest.Path)
+
+	var listResponse packet.ListResp
+	listResponse.ID = listRequest.ID
+	entries, err := c.Manager.provider.List(listRequest.Path)
+	if err != nil {
+		if err == nuggdb.ErrPathNotFound {
+			listResponse.ErrorCode = packet.ErrNoEntity
+		} else {
+			listResponse.ErrorCode = packet.ErrUnspec
+		}
+	} else {
+		b := make([]nuggdb.DirEntry, len(entries))
+		for i := range entries {
+			b[i] = *(entries[i].(*nuggdb.DirEntry))
+		}
+		listResponse.Entries = b
+	}
+
+	return trans.WriteListResp(&listResponse)
 }
 
 func (c *Duplex) processReadMetaPkt(trans *packet.Transiever) error {
@@ -64,11 +94,7 @@ func (c *Duplex) processReadMetaPkt(trans *packet.Transiever) error {
 		readMetaResponse.Meta = *(meta.(*nuggdb.EntryMetadata))
 	}
 
-	err = trans.WriteReadMetaResp(&readMetaResponse)
-	if err != nil {
-		return err
-	}
-	return nil
+	return trans.WriteReadMetaResp(&readMetaResponse)
 }
 
 func (c *Duplex) processLookupPkt(trans *packet.Transiever) error {
@@ -91,11 +117,7 @@ func (c *Duplex) processLookupPkt(trans *packet.Transiever) error {
 		}
 	}
 
-	err = trans.WriteLookupResp(&lookupResponse)
-	if err != nil {
-		return err
-	}
-	return nil
+	return trans.WriteLookupResp(&lookupResponse)
 }
 
 func (c *Duplex) processPingPkt(trans *packet.Transiever) error {
@@ -106,9 +128,5 @@ func (c *Duplex) processPingPkt(trans *packet.Transiever) error {
 	if err != nil {
 		return err
 	}
-	err = trans.WritePong(&ping)
-	if err != nil {
-		return err
-	}
-	return nil
+	return trans.WritePong(&ping)
 }

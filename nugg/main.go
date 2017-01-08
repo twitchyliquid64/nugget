@@ -61,6 +61,9 @@ func main() {
 	meta, err := c.ReadMeta(n)
 	fmt.Println(meta, err)
 
+	entries, err := c.List("/")
+	fmt.Println(entries, err)
+
 	waitInterrupt(fatalErrChan, l)
 }
 

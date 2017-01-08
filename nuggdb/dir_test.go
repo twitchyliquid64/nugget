@@ -6,7 +6,7 @@ import (
 )
 
 func TestSerializeDirEntryCorrectLen(t *testing.T) {
-	d := dirEntry{Name: "yolo.swag/"}
+	d := DirEntry{Name: "yolo.swag/"}
 	s := d.Serialize()
 	if len(s) != (5 + len(d.Name) + 1) {
 		t.Error("Incorrect len")
@@ -14,7 +14,7 @@ func TestSerializeDirEntryCorrectLen(t *testing.T) {
 }
 
 func TestSerializeDirEntryProducesVersion1(t *testing.T) {
-	d := dirEntry{Name: "yolo.sw434634gdfsdfds zfdgdsag/"}
+	d := DirEntry{Name: "yolo.sw434634gdfsdfds zfdgdsag/"}
 	s := d.Serialize()
 	if binary.LittleEndian.Uint16(s[0:2]) != 1 {
 		t.Error("Expected 1")
@@ -22,7 +22,7 @@ func TestSerializeDirEntryProducesVersion1(t *testing.T) {
 }
 
 func TestSerializeDirEntryProducesCorrectNameLen(t *testing.T) {
-	d := dirEntry{Name: "yolo.sw434634gdfsdfds zfdgdsag/"}
+	d := DirEntry{Name: "yolo.sw434634gdfsdfds zfdgdsag/"}
 	s := d.Serialize()
 	if binary.LittleEndian.Uint16(s[3:5]) != uint16(len(d.Name)) {
 		t.Error("Expected ", len(d.Name))
@@ -30,7 +30,7 @@ func TestSerializeDirEntryProducesCorrectNameLen(t *testing.T) {
 }
 
 func TestDirEntryDeserialize(t *testing.T) {
-	d := dirEntry{Name: "yolo.sw434634gdfsdfdszfdgdsag/", IsDir: true}
+	d := DirEntry{Name: "yolo.sw434634gdfsdfdszfdgdsag/", IsDir: true}
 	s := d.Serialize()
 	d2, err := deserializeDirEntry(s)
 	if err != nil {
@@ -45,12 +45,12 @@ func TestDirEntryDeserialize(t *testing.T) {
 }
 
 func TestEntriesSerializeLen(t *testing.T) {
-	d1 := dirEntry{Name: "1 lola"}
-	d2 := dirEntry{Name: "kek", IsDir: true}
-	d3 := dirEntry{Name: "wut"}
+	d1 := DirEntry{Name: "1 lola"}
+	d2 := DirEntry{Name: "kek", IsDir: true}
+	d3 := DirEntry{Name: "wut"}
 	entries := dirEntries{d1, d2, d3}
 	b := entries.Serialize()
-	if len(b) != (2 + dirEntrySize(len(d1.Name)) + dirEntrySize(len(d2.Name)) + dirEntrySize(len(d3.Name))) {
+	if len(b) != (2 + DirEntrySize(len(d1.Name)) + DirEntrySize(len(d2.Name)) + DirEntrySize(len(d3.Name))) {
 		t.Error("Incorrect len")
 	}
 
@@ -60,9 +60,9 @@ func TestEntriesSerializeLen(t *testing.T) {
 }
 
 func TestEntriesSerializeDeserialize(t *testing.T) {
-	d1 := dirEntry{Name: "1 lola"}
-	d2 := dirEntry{Name: "kek", IsDir: true}
-	d3 := dirEntry{Name: "wut"}
+	d1 := DirEntry{Name: "1 lola"}
+	d2 := DirEntry{Name: "kek", IsDir: true}
+	d3 := DirEntry{Name: "wut"}
 	entries := dirEntries{d1, d2, d3}
 	b := entries.Serialize()
 	reversedEntries, err := deserializeDirEntries(b)

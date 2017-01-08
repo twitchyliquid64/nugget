@@ -25,6 +25,8 @@ const (
 	PktLookupResp
 	PktReadMeta
 	PktReadMetaResp
+	PktList
+	PktListResp
 )
 
 // ErrorCode represents classes of RPC failures.
@@ -68,6 +70,19 @@ type ReadMetaResp struct {
 	ID        uint64
 	ErrorCode ErrorCode
 	Meta      nuggdb.EntryMetadata
+}
+
+// ListReq represents a List RPC on the wire
+type ListReq struct {
+	ID   uint64
+	Path string
+}
+
+// ListResp represents the response to a List RPC on the wire
+type ListResp struct {
+	ID        uint64
+	ErrorCode ErrorCode
+	Entries   []nuggdb.DirEntry
 }
 
 // Transiever takes a network bytestream and interprets it into packet structures.

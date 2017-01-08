@@ -61,3 +61,31 @@ func (c *RemoteSource) ReadMeta(entry nugget.EntryID) (nugget.NodeMetadata, erro
 		return &readMetaResp.Meta, nil
 	}
 }
+
+// List implements nugget.DataSource
+func (c *RemoteSource) List(path string) ([]nugget.DirEntry, error) {
+	responseChan := make(chan interface{})
+	call := c.registerRPC(responseChan)
+	defer c.unregisterRPC(call)
+
+	var listRequest packet.ListReq
+	listRequest.ID = call.id
+	listRequest.Path = path
+	c.transiever.WriteListReq(&listRequest)
+
+	select {
+	case <-time.After(defaultTimeout):
+		return nil, ErrTimeout
+	case r := <-responseChan:
+		listResp := r.(packet.ListResp)
+		if listResp.ErrorCode != packet.ErrNoError {
+			return nil, packet.ErrorCodeToErr(listResp.ErrorCode)
+		}
+
+		b := make([]nugget.DirEntry, len(listResp.Entries))
+		for i := range listResp.Entries {
+			b[i] = &listResp.Entries[i]
+		}
+		return b, nil
+	}
+}

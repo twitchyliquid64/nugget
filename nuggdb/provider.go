@@ -130,7 +130,7 @@ func (p *Provider) removeDirectoryEntry(fPath string) error {
 		}
 	}
 
-	var entries []dirEntry
+	var entries []DirEntry
 	if len(data) > 0 {
 		entries, err = deserializeDirEntries(data)
 		if err != nil {
@@ -138,7 +138,7 @@ func (p *Provider) removeDirectoryEntry(fPath string) error {
 		}
 	}
 
-	var outEntries []dirEntry
+	var outEntries []DirEntry
 	for _, entry := range entries {
 		if entry.Name != fPath {
 			outEntries = append(outEntries, entry)
@@ -160,7 +160,7 @@ func (p *Provider) appendDirectoryEntry(fPath string, isDir bool) error {
 		}
 	}
 
-	var entries []dirEntry
+	var entries []DirEntry
 	if len(data) > 0 {
 		entries, err = deserializeDirEntries(data)
 		if err != nil {
@@ -174,7 +174,7 @@ func (p *Provider) appendDirectoryEntry(fPath string, isDir bool) error {
 		}
 	}
 	//doesnt exist, add it
-	entries = append(entries, dirEntry{Name: fPath, IsDir: isDir})
+	entries = append(entries, DirEntry{Name: fPath, IsDir: isDir})
 	_, _, _, err = p.store(dirPath, dirEntries(entries).Serialize(), true)
 	return err
 }

@@ -123,3 +123,37 @@ func (t *Transiever) WriteReadMetaResp(l *ReadMetaResp) error {
 func (t *Transiever) GetReadMetaResp(l *ReadMetaResp) error {
 	return t.packetDecoder.Decode(l)
 }
+
+// WriteListReq writes a List RPC packet to the remote end.
+func (t *Transiever) WriteListReq(l *ListReq) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktList)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+// GetListReq decodes a ListReq packet from the network.
+func (t *Transiever) GetListReq(l *ListReq) error {
+	return t.packetDecoder.Decode(l)
+}
+
+// WriteListResp writes a ListResp RPC packet to the remote end.
+func (t *Transiever) WriteListResp(l *ListResp) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktListResp)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+// GetListResp decodes a ListResp packet from the network.
+func (t *Transiever) GetListResp(l *ListResp) error {
+	return t.packetDecoder.Decode(l)
+}

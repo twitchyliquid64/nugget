@@ -6,27 +6,27 @@ import (
 	"errors"
 )
 
-type dirEntry struct {
+type DirEntry struct {
 	EntryVersion uint16
 	IsDir        bool
 	Name         string
 }
 
-func dirEntrySize(nameLen int) int {
+func DirEntrySize(nameLen int) int {
 	return 2 + 1 + 2 + nameLen + 1
 }
 
-func (e *dirEntry) Identifier() string {
+func (e *DirEntry) Identifier() string {
 	return e.Name
 }
 
-func (e *dirEntry) IsDirectory() bool {
+func (e *DirEntry) IsDirectory() bool {
 	return e.IsDir
 }
 
-// Serialize returns a byte slice which represents the dirEntry structure.
-func (e *dirEntry) Serialize() []byte {
-	buff := make([]byte, dirEntrySize(len(e.Name))) //EntryVersion + Flags(IsDir) + nameSize(uint16) + Name + nullbyte
+// Serialize returns a byte slice which represents the DirEntry structure.
+func (e *DirEntry) Serialize() []byte {
+	buff := make([]byte, DirEntrySize(len(e.Name))) //EntryVersion + Flags(IsDir) + nameSize(uint16) + Name + nullbyte
 	e.EntryVersion = 1
 
 	//Version
@@ -43,8 +43,8 @@ func (e *dirEntry) Serialize() []byte {
 	return buff
 }
 
-func deserializeDirEntry(data []byte) (dirEntry, error) {
-	var out dirEntry
+func deserializeDirEntry(data []byte) (DirEntry, error) {
+	var out DirEntry
 	out.EntryVersion = binary.LittleEndian.Uint16(data[0:2])
 	if out.EntryVersion == 1 {
 		out.IsDir = (data[2] & 1) == 1
@@ -53,28 +53,28 @@ func deserializeDirEntry(data []byte) (dirEntry, error) {
 		return out, nil
 	}
 
-	return dirEntry{}, errors.New("Unknown version")
+	return DirEntry{}, errors.New("Unknown version")
 }
 
-type dirEntries []dirEntry
+type dirEntries []DirEntry
 
 func (dir dirEntries) Serialize() []byte {
 	b := new(bytes.Buffer)
 
 	lenBuff := make([]byte, 2)
-	binary.LittleEndian.PutUint16(lenBuff, uint16(len([]dirEntry(dir))))
+	binary.LittleEndian.PutUint16(lenBuff, uint16(len([]DirEntry(dir))))
 	b.Write(lenBuff)
 
-	for _, entry := range []dirEntry(dir) {
+	for _, entry := range []DirEntry(dir) {
 		b.Write(entry.Serialize())
 	}
 
 	return b.Bytes()
 }
 
-func deserializeDirEntries(data []byte) ([]dirEntry, error) {
+func deserializeDirEntries(data []byte) ([]DirEntry, error) {
 	size := int(binary.LittleEndian.Uint16(data[0:2]))
-	out := make([]dirEntry, size)
+	out := make([]DirEntry, size)
 	var err error
 
 	cursor := 2
@@ -83,7 +83,7 @@ func deserializeDirEntries(data []byte) ([]dirEntry, error) {
 		if err != nil {
 			return out, err
 		}
-		cursor += dirEntrySize(len(out[i].Name))
+		cursor += DirEntrySize(len(out[i].Name))
 	}
 	return out, nil
 }
