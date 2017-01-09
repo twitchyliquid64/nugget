@@ -157,3 +157,37 @@ func (t *Transiever) WriteListResp(l *ListResp) error {
 func (t *Transiever) GetListResp(l *ListResp) error {
 	return t.packetDecoder.Decode(l)
 }
+
+// WriteFetchReq writes a Fetch RPC packet to the remote end.
+func (t *Transiever) WriteFetchReq(l *FetchReq) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktFetch)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+// GetFetchReq decodes a FetchReq packet from the network.
+func (t *Transiever) GetFetchReq(l *FetchReq) error {
+	return t.packetDecoder.Decode(l)
+}
+
+// WriteFetchResp writes a FetchResp RPC packet to the remote end.
+func (t *Transiever) WriteFetchResp(l *FetchResp) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktFetchResp)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+// GetFetchResp decodes a FetchResp packet from the network.
+func (t *Transiever) GetFetchResp(l *FetchResp) error {
+	return t.packetDecoder.Decode(l)
+}

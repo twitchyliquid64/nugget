@@ -97,7 +97,25 @@ func (c *RemoteSource) ReadData(node nugget.ChunkID) ([]byte, error) {
 
 // Fetch implements nugget.DataSource
 func (c *RemoteSource) Fetch(path string) (nugget.EntryID, nugget.NodeMetadata, []byte, error) {
-	return nugget.EntryID{}, nil, []byte(""), ErrNotImplemented
+	responseChan := make(chan interface{})
+	call := c.registerRPC(responseChan)
+	defer c.unregisterRPC(call)
+
+	var fetchRequest packet.FetchReq
+	fetchRequest.ID = call.id
+	fetchRequest.Path = path
+	c.transiever.WriteFetchReq(&fetchRequest)
+
+	select {
+	case <-time.After(defaultTimeout):
+		return nugget.EntryID{}, nil, []byte(""), ErrTimeout
+	case r := <-responseChan:
+		fetchResp := r.(packet.FetchResp)
+		if fetchResp.ErrorCode != packet.ErrNoError {
+			return fetchResp.EntryID, &fetchResp.Meta, fetchResp.Data, packet.ErrorCodeToErr(fetchResp.ErrorCode)
+		}
+		return fetchResp.EntryID, &fetchResp.Meta, fetchResp.Data, nil
+	}
 }
 
 // Store implements nugget.DataSink

@@ -35,6 +35,8 @@ func (c *Duplex) ClientReadLoop() {
 			processingError = c.processReadMetaPkt(trans)
 		case packet.PktList:
 			processingError = c.processListPkt(trans)
+		case packet.PktFetch:
+			processingError = c.processFetchPkt(trans)
 		}
 
 		if processingError != nil {
@@ -95,6 +97,32 @@ func (c *Duplex) processReadMetaPkt(trans *packet.Transiever) error {
 	}
 
 	return trans.WriteReadMetaResp(&readMetaResponse)
+}
+
+func (c *Duplex) processFetchPkt(trans *packet.Transiever) error {
+	var fetchReq packet.FetchReq
+	err := trans.GetFetchReq(&fetchReq)
+	if err != nil {
+		return err
+	}
+	c.Manager.logger.Info("client-read", "Got Fetch request for ", fetchReq.Path)
+
+	var fetchResponse packet.FetchResp
+	fetchResponse.ID = fetchReq.ID
+
+	entryID, metadata, data, err := c.Manager.provider.Fetch(fetchReq.Path)
+	fetchResponse.Meta = *(metadata.(*nuggdb.EntryMetadata))
+	fetchResponse.Data = data
+	fetchResponse.EntryID = entryID
+	if err != nil {
+		if err == nuggdb.ErrMetaNotFound || err == nuggdb.ErrPathNotFound {
+			fetchResponse.ErrorCode = packet.ErrNoEntity
+		} else {
+			fetchResponse.ErrorCode = packet.ErrUnspec
+		}
+	}
+
+	return trans.WriteFetchResp(&fetchResponse)
 }
 
 func (c *Duplex) processLookupPkt(trans *packet.Transiever) error {

@@ -287,3 +287,73 @@ func TestTransieverEncodesDecodesListRPCResponseCorrectly(t *testing.T) {
 		t.Error("Incorrect packet value")
 	}
 }
+
+func TestTransieverEncodesDecodesFetchRPCCorrectly(t *testing.T) {
+	var dataChannel bytes.Buffer
+	transiever := MakeTransiever(&dataChannel, &dataChannel)
+
+	err := transiever.WriteFetchReq(&FetchReq{ID: 455243, Path: "/cat2"})
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if dataChannel.Len() <= 0 {
+		t.Error("Expected data to be written")
+	}
+
+	var out FetchReq
+	pktType, err := transiever.Decode()
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	if pktType != PktFetch {
+		t.Error("Expected PktFetch packet type")
+	}
+
+	err = transiever.GetFetchReq(&out)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if out.ID != 455243 || out.Path != "/cat2" {
+		t.Error("Incorrect packet value")
+	}
+}
+
+func TestTransieverEncodesDecodesFetchRPCResponseCorrectly(t *testing.T) {
+	var dataChannel bytes.Buffer
+	transiever := MakeTransiever(&dataChannel, &dataChannel)
+
+	err := transiever.WriteFetchResp(&FetchResp{ID: 4552, Data: []byte("ab"), EntryID: nugget.EntryID{1}})
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if dataChannel.Len() <= 0 {
+		t.Error("Expected data to be written")
+	}
+
+	var out FetchResp
+	pktType, err := transiever.Decode()
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	if pktType != PktFetchResp {
+		t.Error("Expected PktFetchResp packet type")
+	}
+
+	err = transiever.GetFetchResp(&out)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if (out.ID != 4552 || bytes.Compare(out.Data, []byte("ab")) != 0 || out.EntryID != nugget.EntryID{1}) {
+		t.Error("Incorrect packet value")
+	}
+}
