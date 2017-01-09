@@ -15,6 +15,7 @@ import (
 	"github.com/twitchyliquid64/nugget/logger"
 	"github.com/twitchyliquid64/nugget/nuggdb"
 	"github.com/twitchyliquid64/nugget/nuggtofuse"
+	"github.com/twitchyliquid64/nugget/sysstatfs"
 )
 
 func usage() {
@@ -46,12 +47,17 @@ func main() {
 }
 
 func doMount(l *logger.Logger) (*fuse.Conn, nugget.DataSourceSink, chan error) {
+	inodeSource := inodeFactory.MakePathAwareFactory()
+
 	//Initialize the filesystem backend
 	provider, err := nuggdb.Create(flag.Arg(1), l)
 	if err != nil {
 		log.Fatal("FS init failure: ", err)
 	}
-	mainFS := nuggtofuse.Make(provider, inodeFactory.MakePathAwareFactory(), l)
+	mainFS := nuggtofuse.Make(provider, inodeSource, l)
+
+	sysFS := sysstatfs.Make(inodeSource)
+	mainFS.SetOverride("sys", sysFS)
 
 	//Create the mount
 	c, err := mount(flag.Arg(0))

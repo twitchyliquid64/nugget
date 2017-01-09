@@ -22,6 +22,7 @@ type FS struct {
 	InodeSource inodeFactory.InodeFactory
 	provider    nugget.DataSourceSink
 	logger      *logger.Logger
+	overrides   map[string]fs.Node
 }
 
 // Make creates wraps a provider in a structure that can represent a FUSE filesystem.
@@ -30,6 +31,7 @@ func Make(provider nugget.DataSourceSink, inodeSource *inodeFactory.PathAwareFac
 		InodeSource: inodeSource,
 		provider:    provider,
 		logger:      l,
+		overrides:   map[string]fs.Node{},
 	}
 	r.rootInode = inodeSource.GetInode()
 	return r
@@ -51,6 +53,13 @@ func (fs *FS) getDir(fullPath string) *Dir {
 	}
 }
 
+// SetOverride allows you to add another directory to the root of the filesystem, which will be exposed via FUSE.
+func (fs *FS) SetOverride(name string, override fs.Node) {
+	fs.lock.Lock()
+	fs.lock.Unlock()
+	fs.overrides[name] = override
+}
+
 // Root returns the root Node for this file system.
 func (fs *FS) Root() (fs.Node, error) {
 	return fs, nil
@@ -61,6 +70,11 @@ func (fs *FS) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	fs.lock.Lock()
 	defer fs.lock.Unlock()
 	fs.logger.Info("fuse-lookup", "Query for: ", name)
+
+	if override, overrideExists := fs.overrides[name]; overrideExists {
+		return override, nil
+	}
+
 	eID, err := fs.provider.Lookup("/" + name)
 	if err == nuggdb.ErrPathNotFound {
 		return nil, fuse.ENOENT
@@ -102,6 +116,11 @@ func (fs *FS) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 			out = append(out, fuse.Dirent{Inode: uint64(fs.getInode(entry.Identifier())), Name: path.Base(entry.Identifier()), Type: fuse.DT_File})
 		}
 	}
+
+	for name := range fs.overrides {
+		out = append(out, fuse.Dirent{Name: name, Type: fuse.DT_Dir})
+	}
+
 	return out, nil
 }
 
