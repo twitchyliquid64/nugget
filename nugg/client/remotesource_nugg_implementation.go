@@ -89,3 +89,36 @@ func (c *RemoteSource) List(path string) ([]nugget.DirEntry, error) {
 		return b, nil
 	}
 }
+
+// ReadData implements nugget.DataSource
+func (c *RemoteSource) ReadData(node nugget.ChunkID) ([]byte, error) {
+	return []byte(""), ErrNotImplemented
+}
+
+// Fetch implements nugget.DataSource
+func (c *RemoteSource) Fetch(path string) (nugget.EntryID, nugget.NodeMetadata, []byte, error) {
+	return nugget.EntryID{}, nil, []byte(""), ErrNotImplemented
+}
+
+// Store implements nugget.DataSink
+func (c *RemoteSource) Store(path string, data []byte) (nugget.EntryID, nugget.NodeMetadata, error) {
+	return nugget.EntryID{}, nil, ErrNotImplemented
+}
+
+// Mkdir implements nugget.DataSink
+func (c *RemoteSource) Mkdir(path string) (nugget.EntryID, nugget.NodeMetadata, error) {
+	return nugget.EntryID{}, nil, ErrNotImplemented
+
+}
+
+// Delete implements nugget.DataSink
+func (c *RemoteSource) Delete(path string) error {
+	return ErrNotImplemented
+
+}
+
+// Close implements nugget.DataSink
+func (c *RemoteSource) Close() error {
+	c.conn.Close()
+	return ErrNotImplemented
+}

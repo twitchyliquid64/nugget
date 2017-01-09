@@ -2,7 +2,6 @@ package client
 
 import (
 	"crypto/tls"
-	"fmt"
 	"sync"
 	"time"
 
@@ -86,7 +85,6 @@ func (c *RemoteSource) readServiceRoutine() {
 			var pong packet.PingPong
 			processingError = c.transiever.GetPing(&pong)
 			c.latency = time.Now().Sub(pong.Sent)
-			fmt.Println("Latency: ", c.latency)
 
 		case packet.PktLookupResp:
 			processingError = c.processLookupResponse()
@@ -158,4 +156,9 @@ func (c *RemoteSource) ping() error {
 	ping.Sent = time.Now()
 
 	return c.transiever.WritePing(&ping)
+}
+
+// Latency returns the latency of the connection in nanoseconds.
+func (c *RemoteSource) Latency() int64 {
+	return c.latency.Nanoseconds()
 }
