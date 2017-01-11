@@ -11,6 +11,7 @@ type EntryID [12]byte
 // OptimisedDataSourceSink implements optional methods which can speed up most file systems.
 type OptimisedDataSourceSink interface {
 	Write(fPath string, offset int64, data []byte) (int64, EntryID, NodeMetadata, error)
+	Read(fPath string, offset int64, size int64) ([]byte, error)
 }
 
 // DataSource represents entities who can be queried about filesystem objects.

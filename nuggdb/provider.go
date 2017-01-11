@@ -199,6 +199,23 @@ func (p *Provider) Write(fPath string, offset int64, data []byte) (int64, nugget
 	return int64(len(data)), eID, meta, err
 }
 
+func (p *Provider) Read(fPath string, offset int64, size int64) ([]byte, error) {
+	_, _, data, err := p.Fetch(fPath)
+	if err != nil {
+		return []byte(""), err
+	}
+
+	if offset > int64(len(data)) {
+		data = nil
+	} else {
+		data = data[offset:]
+	}
+	if int64(len(data)) > size {
+		data = data[:size]
+	}
+	return data, nil
+}
+
 // doWrite does the buffer manipulation to perform a write. Data buffers are kept
 // contiguous.
 // Credit: bwester (consulfs)

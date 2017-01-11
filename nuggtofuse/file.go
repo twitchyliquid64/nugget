@@ -48,6 +48,18 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 // Read implements fs.HandleRead, allowing file reads.
 func (f *File) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
 	f.fs.logger.Info("fuse-read", "Got request for ", f.fullPath, " with size=", req.Size, " and offset=", req.Offset)
+
+	if optimizedProvider, ok := f.fs.provider.(nugget.OptimisedDataSourceSink); ok {
+		data, err := optimizedProvider.Read(f.fullPath, req.Offset, int64(req.Size))
+		if err != nil {
+			f.fs.logger.Error("fuse-read", "Failed Read operation: ", err)
+			return fuse.EIO
+		}
+		resp.Data = data
+		return nil
+	}
+
+	f.fs.logger.Warning("fuse-read", "Provider is not optimized, falling back to Fetch/slice strategy.")
 	_, _, data, err := f.fs.provider.Fetch(f.fullPath)
 	fuseutil.HandleRead(req, resp, data)
 	return err

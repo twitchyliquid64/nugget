@@ -212,6 +212,30 @@ func (c *RemoteSource) Write(path string, offset int64, data []byte) (int64, nug
 	}
 }
 
+func (c *RemoteSource) Read(path string, offset int64, size int64) ([]byte, error) {
+	responseChan := make(chan interface{})
+	call := c.registerRPC(responseChan)
+	defer c.unregisterRPC(call)
+
+	var readRequest packet.ReadReq
+	readRequest.ID = call.id
+	readRequest.Path = path
+	readRequest.Offset = offset
+	readRequest.Size = size
+	c.transiever.WriteReadReq(&readRequest)
+
+	select {
+	case <-time.After(defaultTimeout):
+		return []byte(""), ErrTimeout
+	case r := <-responseChan:
+		readResp := r.(packet.ReadResp)
+		if readResp.ErrorCode != packet.ErrNoError {
+			return []byte(""), packet.ErrorCodeToErr(readResp.ErrorCode)
+		}
+		return readResp.Data, nil
+	}
+}
+
 // Close implements nugget.DataSink
 func (c *RemoteSource) Close() error {
 	c.conn.Close()

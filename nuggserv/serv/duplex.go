@@ -48,6 +48,8 @@ func (c *Duplex) ClientReadLoop() {
 			processingError = c.processDeletePkt(trans)
 		case packet.PktWrite:
 			processingError = c.processWritePkt(trans)
+		case packet.PktRead:
+			processingError = c.processReadPkt(trans)
 		}
 
 		if processingError != nil {
@@ -55,6 +57,52 @@ func (c *Duplex) ClientReadLoop() {
 			return
 		}
 	}
+}
+
+func (c *Duplex) processReadPkt(trans *packet.Transiever) error {
+	var readRequest packet.ReadReq
+	err := trans.GetReadReq(&readRequest)
+	if err != nil {
+		return err
+	}
+	c.Manager.logger.Info("client-read", "Got Read request for ", readRequest.Path)
+
+	var readResponse packet.ReadResp
+	readResponse.ID = readRequest.ID
+
+	if c.Manager.isOptimisedProvider {
+		p := c.Manager.provider.(nugget.OptimisedDataSourceSink)
+		data, err := p.Read(readRequest.Path, readRequest.Offset, readRequest.Size)
+		if err == nuggdb.ErrChunkNotFound || err == nuggdb.ErrMetaNotFound || err == nuggdb.ErrPathNotFound {
+			readResponse.ErrorCode = packet.ErrNoEntity
+		} else if err != nil {
+			c.Manager.logger.Warning("client-read", "Read() error: ", err)
+			readResponse.ErrorCode = packet.ErrUnspec
+		}
+		readResponse.Data = data
+
+	} else {
+		c.Manager.logger.Warning("client-read", "Provider is not optimized - falling back to Fetch/slice strategy.")
+		_, _, data, err := c.Manager.provider.Fetch(readRequest.Path)
+		if err != nil {
+			if err == nuggdb.ErrChunkNotFound || err == nuggdb.ErrMetaNotFound || err == nuggdb.ErrPathNotFound {
+				readResponse.ErrorCode = packet.ErrNoEntity
+			} else {
+				readResponse.ErrorCode = packet.ErrUnspec
+			}
+		} else {
+			if readRequest.Offset > int64(len(data)) {
+				data = nil
+			} else {
+				data = data[readRequest.Offset:]
+			}
+			if int64(len(data)) > readRequest.Size {
+				data = data[:readRequest.Size]
+			}
+			readResponse.Data = data
+		}
+	}
+	return trans.WriteReadResp(&readResponse)
 }
 
 func (c *Duplex) processWritePkt(trans *packet.Transiever) error {

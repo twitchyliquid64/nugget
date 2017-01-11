@@ -109,6 +109,9 @@ func (c *RemoteSource) readServiceRoutine() {
 
 		case packet.PktWriteResp:
 			processingError = c.processWriteResponse()
+
+		case packet.PktReadResp:
+			processingError = c.processReadResponse()
 		}
 
 		if processingError != nil {
@@ -117,6 +120,17 @@ func (c *RemoteSource) readServiceRoutine() {
 			return
 		}
 	}
+}
+
+func (c *RemoteSource) processReadResponse() error {
+	var readResp packet.ReadResp
+	err := c.transiever.GetReadResp(&readResp)
+	if err != nil {
+		return err
+	}
+
+	c.dispatchCallResponse(readResp.ID, readResp)
+	return nil
 }
 
 func (c *RemoteSource) processWriteResponse() error {
