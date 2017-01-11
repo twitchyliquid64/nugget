@@ -54,11 +54,14 @@ func NewServer(listenAddr, certPemPath, keyPemPath, caCertPath string, provider 
 		return nil, err
 	}
 
+	_, isOptimisedProvider := provider.(nugget.OptimisedDataSourceSink)
+
 	m := &Manager{
-		isOnline: true,
-		listener: listener,
-		logger:   logger,
-		provider: provider,
+		isOnline:            true,
+		listener:            listener,
+		logger:              logger,
+		provider:            provider,
+		isOptimisedProvider: isOptimisedProvider,
 	}
 
 	go m.mainloop()

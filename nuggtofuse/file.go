@@ -3,6 +3,8 @@ package nuggtofuse
 import (
 	"context"
 
+	"github.com/twitchyliquid64/nugget"
+
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 )
@@ -52,7 +54,17 @@ func (f *File) ReadAll(ctx context.Context) ([]byte, error) {
 func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) error {
 	f.fs.logger.Info("fuse-write", "Got request for ", f.fullPath)
 
-	//TODO: Have a write interface that passes it through to the server, where it can do the splicing.
+	if optimizedProvider, ok := f.fs.provider.(nugget.OptimisedDataSourceSink); ok {
+		written, _, _, err := optimizedProvider.Write(f.fullPath, req.Offset, req.Data)
+		if err != nil {
+			f.fs.logger.Error("fuse-write", "Failed Write operation: ", err)
+			return fuse.EIO
+		}
+		resp.Size = int(written)
+		return nil
+	}
+
+	f.fs.logger.Warning("fuse-write", "Provider is not optimized, falling back to Fetch/store strategy.")
 	_, _, data, err := f.fs.provider.Fetch(f.fullPath)
 	if err != nil {
 		f.fs.logger.Error("fuse-write", "Failed fetch operation: ", err)

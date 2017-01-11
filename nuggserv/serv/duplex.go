@@ -3,6 +3,7 @@ package serv
 import (
 	"net"
 
+	"github.com/twitchyliquid64/nugget"
 	"github.com/twitchyliquid64/nugget/nuggdb"
 	"github.com/twitchyliquid64/nugget/packet"
 )
@@ -45,6 +46,8 @@ func (c *Duplex) ClientReadLoop() {
 			processingError = c.processMkdirPkt(trans)
 		case packet.PktDelete:
 			processingError = c.processDeletePkt(trans)
+		case packet.PktWrite:
+			processingError = c.processWritePkt(trans)
 		}
 
 		if processingError != nil {
@@ -52,6 +55,81 @@ func (c *Duplex) ClientReadLoop() {
 			return
 		}
 	}
+}
+
+func (c *Duplex) processWritePkt(trans *packet.Transiever) error {
+	var writeRequest packet.WriteReq
+	err := trans.GetWriteReq(&writeRequest)
+	if err != nil {
+		return err
+	}
+	c.Manager.logger.Info("client-read", "Got Write request for ", writeRequest.Path)
+
+	var writeResponse packet.WriteResp
+	writeResponse.ID = writeRequest.ID
+
+	if c.Manager.isOptimisedProvider {
+		p := c.Manager.provider.(nugget.OptimisedDataSourceSink)
+		written, entryID, meta, err := p.Write(writeRequest.Path, writeRequest.Offset, writeRequest.Data)
+
+		writeResponse.Written = written
+		writeResponse.Meta = *(meta.(*nuggdb.EntryMetadata))
+		writeResponse.EntryID = entryID
+		if err != nil {
+			if err == nuggdb.ErrChunkNotFound || err == nuggdb.ErrMetaNotFound || err == nuggdb.ErrPathNotFound {
+				writeResponse.ErrorCode = packet.ErrNoEntity
+			} else {
+				writeResponse.ErrorCode = packet.ErrUnspec
+			}
+		}
+
+	} else {
+		c.Manager.logger.Warning("client-read", "Provider is not optimized - falling back to Fetch/Write.")
+		_, _, data, err := c.Manager.provider.Fetch(writeRequest.Path)
+		if err != nil {
+			if err == nuggdb.ErrChunkNotFound || err == nuggdb.ErrMetaNotFound || err == nuggdb.ErrPathNotFound {
+				writeResponse.ErrorCode = packet.ErrNoEntity
+			} else {
+				writeResponse.ErrorCode = packet.ErrUnspec
+			}
+		} else {
+			newData := doWrite(writeRequest.Offset, writeRequest.Data, data)
+			entryID, meta, err := c.Manager.provider.Store(writeRequest.Path, newData)
+			writeResponse.Written = int64(len(writeRequest.Data))
+			writeResponse.Meta = *(meta.(*nuggdb.EntryMetadata))
+			writeResponse.EntryID = entryID
+			if err != nil {
+				if err == nuggdb.ErrChunkNotFound || err == nuggdb.ErrMetaNotFound || err == nuggdb.ErrPathNotFound {
+					writeResponse.ErrorCode = packet.ErrNoEntity
+				} else {
+					writeResponse.ErrorCode = packet.ErrUnspec
+				}
+			}
+		}
+	}
+
+	return trans.WriteWriteResp(&writeResponse)
+}
+
+// doWrite does the buffer manipulation to perform a write. Data buffers are kept
+// contiguous.
+// Credit: bwester (consulfs)
+func doWrite(offset int64, writeData []byte, fileData []byte) []byte {
+	fileEnd := int64(len(fileData))
+	writeEnd := offset + int64(len(writeData))
+	var buf []byte
+	if writeEnd > fileEnd {
+		buf = make([]byte, writeEnd)
+		if fileEnd <= offset {
+			copy(buf, fileData)
+		} else {
+			copy(buf, fileData[:offset])
+		}
+	} else {
+		buf = fileData
+	}
+	copy(buf[offset:writeEnd], writeData)
+	return buf
 }
 
 func (c *Duplex) processDeletePkt(trans *packet.Transiever) error {

@@ -311,3 +311,33 @@ func (t *Transiever) WriteDeleteResp(l *DeleteResp) error {
 func (t *Transiever) GetDeleteResp(l *DeleteResp) error {
 	return t.packetDecoder.Decode(l)
 }
+
+func (t *Transiever) WriteWriteReq(l *WriteReq) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktWrite)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+func (t *Transiever) GetWriteReq(l *WriteReq) error {
+	return t.packetDecoder.Decode(l)
+}
+
+func (t *Transiever) WriteWriteResp(l *WriteResp) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktWriteResp)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+func (t *Transiever) GetWriteResp(l *WriteResp) error {
+	return t.packetDecoder.Decode(l)
+}

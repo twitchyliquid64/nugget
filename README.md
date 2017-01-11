@@ -67,6 +67,7 @@ Note the use of certificates to authenticate the server and itself.
  - [ ] Prevent remove() from deleting non-empty directories
  - [ ] Make a slightly different provider that stores files as actual files
  - [ ] Encode permission information in metadata
+ - [ ] Implement ReadData method on the network client
  - [ ] Write tests / documentation for ./packet
  - [ ] Get multiple chunks working & encoded
  - [ ] Make script to allow incremential backup to S3

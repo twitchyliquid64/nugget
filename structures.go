@@ -8,6 +8,11 @@ type ChunkID [16]byte
 // EntryID uniquely represents a file (file/directory)
 type EntryID [12]byte
 
+// OptimisedDataSourceSink implements optional methods which can speed up most file systems.
+type OptimisedDataSourceSink interface {
+	Write(fPath string, offset int64, data []byte) (int64, EntryID, NodeMetadata, error)
+}
+
 // DataSource represents entities who can be queried about filesystem objects.
 type DataSource interface {
 	Lookup(path string) (EntryID, error)

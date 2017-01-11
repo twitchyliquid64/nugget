@@ -37,6 +37,8 @@ const (
 	PktMkdirResp
 	PktDelete
 	PktDeleteResp
+	PktWrite
+	PktWriteResp
 )
 
 // ErrorCode represents classes of RPC failures.
@@ -163,6 +165,23 @@ type DeleteReq struct {
 type DeleteResp struct {
 	ID        uint64
 	ErrorCode ErrorCode
+}
+
+// WriteReq represents a Write RPC on the wire
+type WriteReq struct {
+	ID     uint64
+	Path   string
+	Offset int64
+	Data   []byte
+}
+
+// WriteResp represents the response to a Write RPC on the wire
+type WriteResp struct {
+	ID        uint64
+	ErrorCode ErrorCode
+	EntryID   nugget.EntryID
+	Meta      nuggdb.EntryMetadata
+	Written   int64
 }
 
 // Transiever takes a network bytestream and interprets it into packet structures.

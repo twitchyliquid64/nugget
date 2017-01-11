@@ -188,6 +188,38 @@ func (p *Provider) Store(fPath string, data []byte) (nugget.EntryID, nugget.Node
 	return eID, meta, err
 }
 
+func (p *Provider) Write(fPath string, offset int64, data []byte) (int64, nugget.EntryID, nugget.NodeMetadata, error) {
+	eID, meta, existingData, err := p.Fetch(fPath)
+	if err != nil {
+		return 0, eID, meta, err
+	}
+
+	newData := doWrite(offset, data, existingData)
+	eID, meta, err = p.Store(fPath, newData)
+	return int64(len(data)), eID, meta, err
+}
+
+// doWrite does the buffer manipulation to perform a write. Data buffers are kept
+// contiguous.
+// Credit: bwester (consulfs)
+func doWrite(offset int64, writeData []byte, fileData []byte) []byte {
+	fileEnd := int64(len(fileData))
+	writeEnd := offset + int64(len(writeData))
+	var buf []byte
+	if writeEnd > fileEnd {
+		buf = make([]byte, writeEnd)
+		if fileEnd <= offset {
+			copy(buf, fileData)
+		} else {
+			copy(buf, fileData[:offset])
+		}
+	} else {
+		buf = fileData
+	}
+	copy(buf[offset:writeEnd], writeData)
+	return buf
+}
+
 // Fetch returns the full tree of information about a file.
 func (p *Provider) Fetch(fPath string) (eID nugget.EntryID, meta nugget.NodeMetadata, data []byte, err error) {
 	eID, err = p.Lookup(fPath)

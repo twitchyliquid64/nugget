@@ -188,6 +188,30 @@ func (c *RemoteSource) Delete(path string) error {
 	}
 }
 
+func (c *RemoteSource) Write(path string, offset int64, data []byte) (int64, nugget.EntryID, nugget.NodeMetadata, error) {
+	responseChan := make(chan interface{})
+	call := c.registerRPC(responseChan)
+	defer c.unregisterRPC(call)
+
+	var writeRequest packet.WriteReq
+	writeRequest.ID = call.id
+	writeRequest.Path = path
+	writeRequest.Offset = offset
+	writeRequest.Data = data
+	c.transiever.WriteWriteReq(&writeRequest)
+
+	select {
+	case <-time.After(defaultTimeout):
+		return 0, nugget.EntryID{}, nil, ErrTimeout
+	case r := <-responseChan:
+		writeResp := r.(packet.WriteResp)
+		if writeResp.ErrorCode != packet.ErrNoError {
+			return 0, nugget.EntryID{}, nil, packet.ErrorCodeToErr(writeResp.ErrorCode)
+		}
+		return writeResp.Written, writeResp.EntryID, &writeResp.Meta, nil
+	}
+}
+
 // Close implements nugget.DataSink
 func (c *RemoteSource) Close() error {
 	c.conn.Close()
