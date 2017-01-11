@@ -7,6 +7,7 @@ import (
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
+	"bazil.org/fuse/fuseutil"
 )
 
 // File represents is a FUSE wrapper around a file entity stored in the system.
@@ -44,11 +45,12 @@ func (f *File) Attr(ctx context.Context, a *fuse.Attr) error {
 	return nil
 }
 
-// ReadAll implements fs.HandleReadAller, allowing file reads.
-func (f *File) ReadAll(ctx context.Context) ([]byte, error) {
-	f.fs.logger.Info("fuse-readall", "Got request for ", f.fullPath)
+// Read implements fs.HandleRead, allowing file reads.
+func (f *File) Read(ctx context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
+	f.fs.logger.Info("fuse-read", "Got request for ", f.fullPath, " with size=", req.Size, " and offset=", req.Offset)
 	_, _, data, err := f.fs.provider.Fetch(f.fullPath)
-	return data, err
+	fuseutil.HandleRead(req, resp, data)
+	return err
 }
 
 func (f *File) Write(ctx context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) error {
