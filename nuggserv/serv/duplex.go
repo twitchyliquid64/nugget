@@ -37,6 +37,14 @@ func (c *Duplex) ClientReadLoop() {
 			processingError = c.processListPkt(trans)
 		case packet.PktFetch:
 			processingError = c.processFetchPkt(trans)
+		case packet.PktReadData:
+			processingError = c.processReadDataPkt(trans)
+		case packet.PktStore:
+			processingError = c.processStorePkt(trans)
+		case packet.PktMkdir:
+			processingError = c.processMkdirPkt(trans)
+		case packet.PktDelete:
+			processingError = c.processDeletePkt(trans)
 		}
 
 		if processingError != nil {
@@ -44,6 +52,95 @@ func (c *Duplex) ClientReadLoop() {
 			return
 		}
 	}
+}
+
+func (c *Duplex) processDeletePkt(trans *packet.Transiever) error {
+	var deleteRequest packet.DeleteReq
+	err := trans.GetDeleteReq(&deleteRequest)
+	if err != nil {
+		return err
+	}
+	c.Manager.logger.Info("client-read", "Got Delete request for ", deleteRequest.Path)
+
+	var deleteResponse packet.DeleteResp
+	deleteResponse.ID = deleteRequest.ID
+	err = c.Manager.provider.Delete(deleteRequest.Path)
+	if err != nil {
+		if err == nuggdb.ErrChunkNotFound || err == nuggdb.ErrMetaNotFound || err == nuggdb.ErrPathNotFound {
+			deleteResponse.ErrorCode = packet.ErrNoEntity
+		} else {
+			deleteResponse.ErrorCode = packet.ErrUnspec
+		}
+	}
+
+	return trans.WriteDeleteResp(&deleteResponse)
+}
+
+func (c *Duplex) processMkdirPkt(trans *packet.Transiever) error {
+	var mkdirRequest packet.MkdirReq
+	err := trans.GetMkdirReq(&mkdirRequest)
+	if err != nil {
+		return err
+	}
+	c.Manager.logger.Info("client-read", "Got Mkdir request for ", mkdirRequest.Path)
+
+	var mkdirResponse packet.MkdirResp
+	mkdirResponse.ID = mkdirRequest.ID
+	entryID, meta, err := c.Manager.provider.Mkdir(mkdirRequest.Path)
+	mkdirResponse.EntryID = entryID
+	mkdirResponse.Meta = *(meta.(*nuggdb.EntryMetadata))
+	if err != nil {
+		if err == nuggdb.ErrChunkNotFound || err == nuggdb.ErrMetaNotFound || err == nuggdb.ErrPathNotFound {
+			mkdirResponse.ErrorCode = packet.ErrNoEntity
+		} else {
+			mkdirResponse.ErrorCode = packet.ErrUnspec
+		}
+	}
+
+	return trans.WriteMkdirResp(&mkdirResponse)
+}
+
+func (c *Duplex) processStorePkt(trans *packet.Transiever) error {
+	var storeRequest packet.StoreReq
+	err := trans.GetStoreReq(&storeRequest)
+	if err != nil {
+		return err
+	}
+	c.Manager.logger.Info("client-read", "Got Store request for ", storeRequest.Path)
+
+	var storeResponse packet.StoreResp
+	storeResponse.ID = storeRequest.ID
+	entryID, meta, err := c.Manager.provider.Store(storeRequest.Path, storeRequest.Data)
+	storeResponse.EntryID = entryID
+	storeResponse.Meta = *(meta.(*nuggdb.EntryMetadata))
+	if err != nil {
+		storeResponse.ErrorCode = packet.ErrUnspec
+	}
+
+	return trans.WriteStoreResp(&storeResponse)
+}
+
+func (c *Duplex) processReadDataPkt(trans *packet.Transiever) error {
+	var readDataRequest packet.ReadDataReq
+	err := trans.GetReadDataReq(&readDataRequest)
+	if err != nil {
+		return err
+	}
+	c.Manager.logger.Info("client-read", "Got ReadData request for ", readDataRequest.ChunkID)
+
+	var readDataResponse packet.ReadDataResp
+	readDataResponse.ID = readDataRequest.ID
+	d, err := c.Manager.provider.ReadData(readDataRequest.ChunkID)
+	readDataResponse.Data = d
+	if err != nil {
+		if err == nuggdb.ErrChunkNotFound {
+			readDataResponse.ErrorCode = packet.ErrNoEntity
+		} else {
+			readDataResponse.ErrorCode = packet.ErrUnspec
+		}
+	}
+
+	return trans.WriteReadDataResp(&readDataResponse)
 }
 
 func (c *Duplex) processListPkt(trans *packet.Transiever) error {

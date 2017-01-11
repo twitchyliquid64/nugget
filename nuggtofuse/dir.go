@@ -9,6 +9,7 @@ import (
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
 	"github.com/twitchyliquid64/nugget/nuggdb"
+	"github.com/twitchyliquid64/nugget/packet"
 )
 
 // Dir represents is a FUSE wrapper around a directory entity stored in the system.
@@ -53,7 +54,7 @@ func (d *Dir) ReadDirAll(ctx context.Context) ([]fuse.Dirent, error) {
 func (d *Dir) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	d.fs.logger.Info("fuse-lookup", "Query for: ", path.Join(d.fullPath, name))
 	eID, err := d.fs.provider.Lookup(path.Join(d.fullPath, name))
-	if err == nuggdb.ErrPathNotFound {
+	if err == nuggdb.ErrPathNotFound || err == packet.ErrNoEnt {
 		return nil, fuse.ENOENT
 	} else if err != nil {
 		d.fs.logger.Error("fuse-lookup", "Lookup for "+path.Join(d.fullPath, name)+" failed: ", err)

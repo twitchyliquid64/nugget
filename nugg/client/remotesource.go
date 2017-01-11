@@ -97,6 +97,15 @@ func (c *RemoteSource) readServiceRoutine() {
 
 		case packet.PktFetchResp:
 			processingError = c.processFetchResponse()
+
+		case packet.PktStoreResp:
+			processingError = c.processStoreResponse()
+
+		case packet.PktMkdirResp:
+			processingError = c.processMkdirResponse()
+
+		case packet.PktDeleteResp:
+			processingError = c.processDeleteResponse()
 		}
 
 		if processingError != nil {
@@ -105,6 +114,39 @@ func (c *RemoteSource) readServiceRoutine() {
 			return
 		}
 	}
+}
+
+func (c *RemoteSource) processDeleteResponse() error {
+	var deleteResp packet.DeleteResp
+	err := c.transiever.GetDeleteResp(&deleteResp)
+	if err != nil {
+		return err
+	}
+
+	c.dispatchCallResponse(deleteResp.ID, deleteResp)
+	return nil
+}
+
+func (c *RemoteSource) processMkdirResponse() error {
+	var mkdirResp packet.MkdirResp
+	err := c.transiever.GetMkdirResp(&mkdirResp)
+	if err != nil {
+		return err
+	}
+
+	c.dispatchCallResponse(mkdirResp.ID, mkdirResp)
+	return nil
+}
+
+func (c *RemoteSource) processStoreResponse() error {
+	var storeResp packet.StoreResp
+	err := c.transiever.GetStoreResp(&storeResp)
+	if err != nil {
+		return err
+	}
+
+	c.dispatchCallResponse(storeResp.ID, storeResp)
+	return nil
 }
 
 func (c *RemoteSource) processFetchResponse() error {

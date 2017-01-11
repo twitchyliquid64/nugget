@@ -191,3 +191,123 @@ func (t *Transiever) WriteFetchResp(l *FetchResp) error {
 func (t *Transiever) GetFetchResp(l *FetchResp) error {
 	return t.packetDecoder.Decode(l)
 }
+
+func (t *Transiever) WriteReadDataReq(l *ReadDataReq) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktReadData)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+func (t *Transiever) GetReadDataReq(l *ReadDataReq) error {
+	return t.packetDecoder.Decode(l)
+}
+
+func (t *Transiever) WriteReadDataResp(l *ReadDataResp) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktReadDataResp)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+func (t *Transiever) GetReadDataResp(l *ReadDataResp) error {
+	return t.packetDecoder.Decode(l)
+}
+
+func (t *Transiever) WriteStoreReq(l *StoreReq) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktStore)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+func (t *Transiever) GetStoreReq(l *StoreReq) error {
+	return t.packetDecoder.Decode(l)
+}
+
+func (t *Transiever) WriteStoreResp(l *StoreResp) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktStoreResp)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+func (t *Transiever) GetStoreResp(l *StoreResp) error {
+	return t.packetDecoder.Decode(l)
+}
+
+func (t *Transiever) WriteMkdirReq(l *MkdirReq) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktMkdir)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+func (t *Transiever) GetMkdirReq(l *MkdirReq) error {
+	return t.packetDecoder.Decode(l)
+}
+
+func (t *Transiever) WriteMkdirResp(l *MkdirResp) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktMkdirResp)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+func (t *Transiever) GetMkdirResp(l *MkdirResp) error {
+	return t.packetDecoder.Decode(l)
+}
+
+func (t *Transiever) WriteDeleteReq(l *DeleteReq) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktDelete)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+func (t *Transiever) GetDeleteReq(l *DeleteReq) error {
+	return t.packetDecoder.Decode(l)
+}
+
+func (t *Transiever) WriteDeleteResp(l *DeleteResp) error {
+	t.sendLock.Lock()
+	defer t.sendLock.Unlock()
+
+	err := t.packetEncoder.Encode(PktDeleteResp)
+	if err != nil {
+		return err
+	}
+	return t.packetEncoder.Encode(l)
+}
+
+func (t *Transiever) GetDeleteResp(l *DeleteResp) error {
+	return t.packetDecoder.Decode(l)
+}

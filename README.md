@@ -58,3 +58,16 @@ Note the use of certificates to authenticate to/for clients.
 `sudo ./nugg --cert nugget.certPEM --cacert ca.pem --key nugget.keyPEM /mountpoint`
 
 Note the use of certificates to authenticate the server and itself.
+
+# TODO
+
+ - [x] Implement packet encoding for ReadData, Store, Mkdir, Delete
+ - [ ] Start using FUSE Read() instead of ReadAll() - Make network method to read()
+ - [ ] Likewise use FUSE Write() and pass it through
+ - [ ] Prevent remove() from deleting non-empty directories
+ - [ ] Make a slightly different provider that stores files as actual files
+ - [ ] Encode permission information in metadata
+ - [ ] Write tests / documentation for ./packet
+ - [ ] Get multiple chunks working & encoded
+ - [ ] Make script to allow incremential backup to S3
+ - [ ] Make replication / distributed mode

@@ -120,19 +120,72 @@ func (c *RemoteSource) Fetch(path string) (nugget.EntryID, nugget.NodeMetadata, 
 
 // Store implements nugget.DataSink
 func (c *RemoteSource) Store(path string, data []byte) (nugget.EntryID, nugget.NodeMetadata, error) {
-	return nugget.EntryID{}, nil, ErrNotImplemented
+	responseChan := make(chan interface{})
+	call := c.registerRPC(responseChan)
+	defer c.unregisterRPC(call)
+
+	var storeRequest packet.StoreReq
+	storeRequest.ID = call.id
+	storeRequest.Path = path
+	storeRequest.Data = data
+	c.transiever.WriteStoreReq(&storeRequest)
+
+	select {
+	case <-time.After(defaultTimeout):
+		return nugget.EntryID{}, nil, ErrTimeout
+	case r := <-responseChan:
+		storeResp := r.(packet.StoreResp)
+		if storeResp.ErrorCode != packet.ErrNoError {
+			return nugget.EntryID{}, nil, packet.ErrorCodeToErr(storeResp.ErrorCode)
+		}
+		return storeResp.EntryID, &storeResp.Meta, nil
+	}
 }
 
 // Mkdir implements nugget.DataSink
 func (c *RemoteSource) Mkdir(path string) (nugget.EntryID, nugget.NodeMetadata, error) {
-	return nugget.EntryID{}, nil, ErrNotImplemented
+	responseChan := make(chan interface{})
+	call := c.registerRPC(responseChan)
+	defer c.unregisterRPC(call)
 
+	var mkdirRequest packet.MkdirReq
+	mkdirRequest.ID = call.id
+	mkdirRequest.Path = path
+	c.transiever.WriteMkdirReq(&mkdirRequest)
+
+	select {
+	case <-time.After(defaultTimeout):
+		return nugget.EntryID{}, nil, ErrTimeout
+	case r := <-responseChan:
+		mkdirResp := r.(packet.MkdirResp)
+		if mkdirResp.ErrorCode != packet.ErrNoError {
+			return nugget.EntryID{}, nil, packet.ErrorCodeToErr(mkdirResp.ErrorCode)
+		}
+		return mkdirResp.EntryID, &mkdirResp.Meta, nil
+	}
 }
 
 // Delete implements nugget.DataSink
 func (c *RemoteSource) Delete(path string) error {
-	return ErrNotImplemented
+	responseChan := make(chan interface{})
+	call := c.registerRPC(responseChan)
+	defer c.unregisterRPC(call)
 
+	var deleteRequest packet.DeleteReq
+	deleteRequest.ID = call.id
+	deleteRequest.Path = path
+	c.transiever.WriteDeleteReq(&deleteRequest)
+
+	select {
+	case <-time.After(defaultTimeout):
+		return ErrTimeout
+	case r := <-responseChan:
+		deleteResp := r.(packet.DeleteResp)
+		if deleteResp.ErrorCode != packet.ErrNoError {
+			return packet.ErrorCodeToErr(deleteResp.ErrorCode)
+		}
+		return nil
+	}
 }
 
 // Close implements nugget.DataSink

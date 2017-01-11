@@ -29,6 +29,14 @@ const (
 	PktListResp
 	PktFetch
 	PktFetchResp
+	PktReadData
+	PktReadDataResp
+	PktStore
+	PktStoreResp
+	PktMkdir
+	PktMkdirResp
+	PktDelete
+	PktDeleteResp
 )
 
 // ErrorCode represents classes of RPC failures.
@@ -103,6 +111,60 @@ type FetchResp struct {
 	Data      []byte
 }
 
+// ReadDataReq represents a ReadData RPC on the wire
+type ReadDataReq struct {
+	ID      uint64
+	ChunkID nugget.ChunkID
+}
+
+// ReadDataResp represents the response to a ReadData RPC on the wire
+type ReadDataResp struct {
+	ID        uint64
+	ErrorCode ErrorCode
+	Data      []byte
+}
+
+// StoreReq represents a Store RPC on the wire
+type StoreReq struct {
+	ID   uint64
+	Path string
+	Data []byte
+}
+
+// StoreResp represents the response to a Store RPC on the wire
+type StoreResp struct {
+	ID        uint64
+	ErrorCode ErrorCode
+	EntryID   nugget.EntryID
+	Meta      nuggdb.EntryMetadata
+}
+
+// MkdirReq represents a Mkdir RPC on the wire
+type MkdirReq struct {
+	ID   uint64
+	Path string
+}
+
+// MkdirResp represents the response to a Mkdir RPC on the wire
+type MkdirResp struct {
+	ID        uint64
+	ErrorCode ErrorCode
+	EntryID   nugget.EntryID
+	Meta      nuggdb.EntryMetadata
+}
+
+// DeleteReq represents a Delete RPC on the wire
+type DeleteReq struct {
+	ID   uint64
+	Path string
+}
+
+// DeleteResp represents the response to a Delete RPC on the wire
+type DeleteResp struct {
+	ID        uint64
+	ErrorCode ErrorCode
+}
+
 // Transiever takes a network bytestream and interprets it into packet structures.
 type Transiever struct {
 	packetDecoder *gob.Decoder
@@ -114,13 +176,16 @@ type Transiever struct {
 	sendLock sync.Mutex
 }
 
+// ErrNoEnt indicates that component requested did not exist.
+var ErrNoEnt = errors.New("No entity")
+
 // ErrorCodeToErr maps error codes returned via RPC to actual error types.
 func ErrorCodeToErr(code ErrorCode) error {
 	switch code {
 	case ErrNoError:
 		return nil
 	case ErrNoEntity:
-		return errors.New("No entity")
+		return ErrNoEnt
 	case ErrIOErr:
 		return errors.New("IO Error")
 	case ErrTimeout:

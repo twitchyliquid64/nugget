@@ -13,6 +13,7 @@ import (
 	"github.com/twitchyliquid64/nugget/inodeFactory"
 	"github.com/twitchyliquid64/nugget/logger"
 	"github.com/twitchyliquid64/nugget/nuggdb"
+	"github.com/twitchyliquid64/nugget/packet"
 )
 
 // FS represents the structure which talks fuse to a nugget.DataSource or nugget.DataSink.
@@ -76,7 +77,7 @@ func (fs *FS) Lookup(ctx context.Context, name string) (fs.Node, error) {
 	}
 
 	eID, err := fs.provider.Lookup("/" + name)
-	if err == nuggdb.ErrPathNotFound {
+	if err == nuggdb.ErrPathNotFound || err == packet.ErrNoEnt {
 		return nil, fuse.ENOENT
 	} else if err != nil {
 		fs.logger.Error("fuse-lookup", "Lookup for "+name+" failed: ", err)
