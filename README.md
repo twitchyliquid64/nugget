@@ -65,7 +65,8 @@ Note the use of certificates to authenticate the server and itself.
  - [x] Start using FUSE Read() instead of ReadAll() - Make network method to read()
  - [x] Likewise use FUSE Write() and pass it through
  - [ ] Prevent remove() from deleting non-empty directories
- - [ ] Make a slightly different provider that stores files as actual files
+ - [x] Make nuggdb store chunks as actual files
+ - [ ] Make file-backed chunk db delete unneeded folders.
  - [ ] Encode permission information in metadata
  - [ ] Implement ReadData method on the network client
  - [ ] Write tests / documentation for ./packet
