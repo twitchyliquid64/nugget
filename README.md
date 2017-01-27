@@ -62,7 +62,7 @@ Note the use of certificates to authenticate the server and itself.
 # TODO
 
  - [x] Implement packet encoding for ReadData, Store, Mkdir, Delete
- - [ ] Start using FUSE Read() instead of ReadAll() - Make network method to read()
+ - [x] Start using FUSE Read() instead of ReadAll() - Make network method to read()
  - [x] Likewise use FUSE Write() and pass it through
  - [ ] Prevent remove() from deleting non-empty directories
  - [ ] Make a slightly different provider that stores files as actual files
