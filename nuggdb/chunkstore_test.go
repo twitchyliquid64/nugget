@@ -12,7 +12,7 @@ func TestOpenChunkstoreSucceeds(t *testing.T) {
 	cs, err := OpenChunkStore("testchunkstore.db")
 	defer func() {
 		cs.Close()
-		os.Remove("testchunkstore.db")
+		os.RemoveAll("testchunkstore.db")
 	}()
 	if err != nil {
 		t.Error(err)
@@ -23,7 +23,7 @@ func TestLookupForNonexistantChunkErrorsCorrectly(t *testing.T) {
 	cs, err := OpenChunkStore("testchunkstore.db")
 	defer func() {
 		cs.Close()
-		os.Remove("testchunkstore.db")
+		os.RemoveAll("testchunkstore.db")
 	}()
 	if err != nil {
 		t.Error(err)
@@ -43,7 +43,7 @@ func TestCommitChunkstoreSucceedsAndLookup(t *testing.T) {
 	cs, err := OpenChunkStore("testchunkstore.db")
 	defer func() {
 		cs.Close()
-		os.Remove("testchunkstore.db")
+		os.RemoveAll("testchunkstore.db")
 	}()
 	if err != nil {
 		t.Error(err)
@@ -67,7 +67,7 @@ func TestForgeChunkstoreSucceedsAndLookup(t *testing.T) {
 	cs, err := OpenChunkStore("testchunkstore.db")
 	defer func() {
 		cs.Close()
-		os.Remove("testchunkstore.db")
+		os.RemoveAll("testchunkstore.db")
 	}()
 	if err != nil {
 		t.Error(err)

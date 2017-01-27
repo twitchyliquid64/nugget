@@ -2,10 +2,12 @@ package nuggdb
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"errors"
-	"time"
+	"io/ioutil"
+	"os"
+	"path"
 
-	"github.com/boltdb/bolt"
 	"github.com/twitchyliquid64/nugget"
 )
 
@@ -18,27 +20,19 @@ var ErrChunkNotFound = errors.New("Could not find chunk in chunkstore")
 // for storing / fetching chunks by chunk ID.
 type Chunkstore struct {
 	path string
-	db   *bolt.DB
 }
 
 // OpenChunkStore opens a chunkstore backed by the file at path.
 func OpenChunkStore(path string) (*Chunkstore, error) {
-	db, err := bolt.Open(path, 0600, &bolt.Options{Timeout: 1 * time.Second})
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.Update(func(tx *bolt.Tx) error {
-		_, err2 := tx.CreateBucketIfNotExists([]byte(chunkBucket))
-		return err2
-	})
-	if err != nil {
-		return nil, err
+	if !fileExists(path) {
+		err := os.Mkdir(path, 0777)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	chunkStore := &Chunkstore{
 		path: path,
-		db:   db,
 	}
 	return chunkStore, nil
 }
@@ -46,32 +40,36 @@ func OpenChunkStore(path string) (*Chunkstore, error) {
 // Lookup returns the data associated with a chunkID. ErrChunkNotFound
 // is returned if no such chunk exists.
 func (cs *Chunkstore) Lookup(chunkID nugget.ChunkID) ([]byte, error) {
-	var result []byte
-	var notFound bool
-	err := cs.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(chunkBucket))
-		v := b.Get([]byte(chunkID[:]))
-		if v != nil {
-			result = make([]byte, len(v))
-			copy(result, v)
-		} else {
-			notFound = true
-		}
-		return nil
-	})
-	if notFound {
-		return result, ErrChunkNotFound
+	fPath := path.Join(cs.path, cs.dirPrefix(chunkID), cs.fileName(chunkID))
+
+	if !fileExists(fPath) {
+		return []byte(""), ErrChunkNotFound
 	}
-	return result, err
+
+	return ioutil.ReadFile(fPath)
+}
+
+func (cs *Chunkstore) dirPrefix(chunkID nugget.ChunkID) string {
+	return hex.EncodeToString(chunkID[:2])
+}
+
+func (cs *Chunkstore) fileName(chunkID nugget.ChunkID) string {
+	return hex.EncodeToString(chunkID[2:])
 }
 
 // Commit sets the data for a chunkID.
 func (cs *Chunkstore) Commit(chunkID nugget.ChunkID, data []byte) error {
-	return cs.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(chunkBucket))
-		err := b.Put([]byte(chunkID[:]), data)
-		return err
-	})
+	dirPath := path.Join(cs.path, cs.dirPrefix(chunkID))
+
+	if !fileExists(dirPath) {
+		err := os.Mkdir(dirPath, 0777)
+		if err != nil {
+			return err
+		}
+	}
+
+	fPath := path.Join(cs.path, cs.dirPrefix(chunkID), cs.fileName(chunkID))
+	return ioutil.WriteFile(fPath, data, 0755)
 }
 
 // Forge saves data with a new chunk ID and returns it.
@@ -84,14 +82,11 @@ func (cs *Chunkstore) Forge(data []byte) (nugget.ChunkID, error) {
 
 // Close closes the underlying database. This should be called before shutdown.
 func (cs *Chunkstore) Close() error {
-	return cs.db.Close()
+	return nil
 }
 
 // Delete removes a chunk from the chunkstore. Nil is returned if the chunk does not exist.
 func (cs *Chunkstore) Delete(chunkID nugget.ChunkID) error {
-	return cs.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(chunkBucket))
-		err := b.Delete(chunkID[:])
-		return err
-	})
+	fPath := path.Join(cs.path, cs.dirPrefix(chunkID), cs.fileName(chunkID))
+	return os.Remove(fPath)
 }
