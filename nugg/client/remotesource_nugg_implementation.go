@@ -188,6 +188,7 @@ func (c *RemoteSource) Delete(path string) error {
 	}
 }
 
+// Write implements nugget.OptimisedDataSourceSink
 func (c *RemoteSource) Write(path string, offset int64, data []byte) (int64, nugget.EntryID, nugget.NodeMetadata, error) {
 	responseChan := make(chan interface{})
 	call := c.registerRPC(responseChan)
@@ -212,6 +213,7 @@ func (c *RemoteSource) Write(path string, offset int64, data []byte) (int64, nug
 	}
 }
 
+// Read implements nugget.OptimisedDataSourceSink
 func (c *RemoteSource) Read(path string, offset int64, size int64) ([]byte, error) {
 	responseChan := make(chan interface{})
 	call := c.registerRPC(responseChan)

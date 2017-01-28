@@ -200,20 +200,16 @@ func (p *Provider) Write(fPath string, offset int64, data []byte) (int64, nugget
 }
 
 func (p *Provider) Read(fPath string, offset int64, size int64) ([]byte, error) {
-	_, _, data, err := p.Fetch(fPath)
+	eID, err := p.Lookup(fPath)
+	if err != nil {
+		return []byte(""), err
+	}
+	meta, err := p.ReadMeta(eID)
 	if err != nil {
 		return []byte(""), err
 	}
 
-	if offset > int64(len(data)) {
-		data = nil
-	} else {
-		data = data[offset:]
-	}
-	if int64(len(data)) > size {
-		data = data[:size]
-	}
-	return data, nil
+	return p.chunkstore.Read(meta.GetDataLocality().Chunks()[0], offset, size)
 }
 
 // doWrite does the buffer manipulation to perform a write. Data buffers are kept

@@ -49,6 +49,21 @@ func (cs *Chunkstore) Lookup(chunkID nugget.ChunkID) ([]byte, error) {
 	return ioutil.ReadFile(fPath)
 }
 
+func (cs *Chunkstore) Read(chunkID nugget.ChunkID, offset int64, size int64) ([]byte, error) {
+	fPath := path.Join(cs.path, cs.dirPrefix(chunkID), cs.fileName(chunkID))
+	fHandle, err := os.Open(fPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []byte(""), ErrChunkNotFound
+		}
+		return []byte(""), err
+	}
+	defer fHandle.Close()
+	buff := make([]byte, size)
+	n, err := fHandle.ReadAt(buff, offset)
+	return buff[:n], err
+}
+
 func (cs *Chunkstore) dirPrefix(chunkID nugget.ChunkID) string {
 	return hex.EncodeToString(chunkID[:2])
 }
