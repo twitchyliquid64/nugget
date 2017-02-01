@@ -1,41 +1,6 @@
-Nugget is my attempt at a simple network filesystem. This repository stores internal packages and various binaries.
+Nugget is my attempt at a simple network filesystem. This repository stores internal packages and various binaries. This project is currently parked, with adding permissions / default UID/GID the top priority, followed by testing of `packet` and `nuggdb.Provider`.
 
-# architecture
-
-## Data storage - Paths/EntryIDs, EntryIDs/Metadata, ChunkIDs/Chunks
-
-All information in the filesystem is stored in 3 key-value stores - stored in 3 files by boltDB.
-
-The first key value store stores a mapping between the file path and a unique ID representing the files metadata. This unique ID is called the EntryID.
-
-The second key value store holds a mapping between EntryID's and Metadata. The metadata stores, among other things, the size of the file, its name, and the ID's of the
-chunks that hold its data.
-
-The last key value store holds a mapping between ChunkID's and the data which makes up a chunk. The actual file data is stored here.
-
-### Example operation: read
-
-The filesystem issues a open() followed by a read().
-
-1. Nugget looks up the file's path to get it's entryID. If no such entry exists, the flow aborts with a no-entity error.
-2. Nugget looks up the entryID to get the file's metadata, getting out the relevant ChunkIDs so it can access the data.
-3. Nugget uses the chunkID's stored in the metadata to request the chunks data, and returns the relevant data back to FUSE.
-
-
-
-## Security
-
-Security over the network is achieved by using TLS with both client and server certificate verification. Both client and serve need to be given three files:
-
-1. A PEM-encoded CA certificate to use as the root of trust.
-2. A PEM-encoded certificate to be presented to the remote end. This must be signed by the CA certificate.
-3. The key for the PEM-encoded certificate.
-
-Both ends check that the remote end presents a certificate which is signed by their root of trust.
-
-Strong (2016) ciphers are used.
-
-# binaries
+# Binaries
 
 ## nugglocal
 
@@ -59,15 +24,50 @@ Note the use of certificates to authenticate to/for clients.
 
 Note the use of certificates to authenticate the server and itself.
 
+
+# Architecture
+
+## Data storage - Paths/EntryIDs, EntryIDs/Metadata, ChunkIDs/Chunks
+
+All information in the filesystem is stored in 3 key-value stores - stored in 3 files by boltDB.
+
+The first key value store stores a mapping between the file path and a unique ID representing the files metadata. This unique ID is called the EntryID.
+
+The second key value store holds a mapping between EntryID's and Metadata. The metadata stores, among other things, the size of the file, its name, and the ID's of the
+chunks that hold its data.
+
+The last key value store holds a mapping between ChunkID's and the data which makes up a chunk. The actual file data is stored here.
+
+### Example operation: read
+
+The filesystem issues a open() followed by a read().
+
+1. Nugget looks up the file's path to get it's entryID. If no such entry exists, the flow aborts with a no-entity error.
+2. Nugget looks up the entryID to get the file's metadata, getting out the relevant ChunkIDs so it can access the data.
+3. Nugget uses the chunkID's stored in the metadata to request the chunks data, and returns the relevant data back to FUSE.
+
+### Remaining issues
+
+ * Symlinks are not yet (ever?) supported.
+ * Writes are not atomic (write to chunk succeeds before the metadata is updated.)
+ * Some more work is probably needed in nuggdb.Provider to improve reliability / prevent corruption.
+
+## Security
+
+Security over the network is achieved by using TLS with both client and server certificate verification. Both client and serve need to be given three files:
+
+1. A PEM-encoded CA certificate to use as the root of trust.
+2. A PEM-encoded certificate to be presented to the remote end. This must be signed by the CA certificate.
+3. The key for the PEM-encoded certificate.
+
+Both ends check that the remote end presents a certificate which is signed by their root of trust.
+
+Strong (2016) ciphers are used.
+
 # TODO
 
- - [x] Implement packet encoding for ReadData, Store, Mkdir, Delete
- - [x] Start using FUSE Read() instead of ReadAll() - Make network method to read()
- - [x] Likewise use FUSE Write() and pass it through
  - [ ] Proper tests for nuggdb (Provider)
  - [ ] Prevent remove() from deleting non-empty directories
- - [x] Make nuggdb store chunks as actual files
- - [ ] Make file-backed chunk db delete unneeded folders.
  - [ ] Encode permission information in metadata
  - [ ] Implement ReadData method on the network client
  - [ ] Write tests / documentation for ./packet
