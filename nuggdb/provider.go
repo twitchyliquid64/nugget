@@ -188,15 +188,29 @@ func (p *Provider) Store(fPath string, data []byte) (nugget.EntryID, nugget.Node
 	return eID, meta, err
 }
 
-func (p *Provider) Write(fPath string, offset int64, data []byte) (int64, nugget.EntryID, nugget.NodeMetadata, error) {
-	eID, meta, existingData, err := p.Fetch(fPath)
+func (p *Provider) Write(fPath string, offset int64, data []byte) (written int64, eID nugget.EntryID, meta nugget.NodeMetadata, err error) {
+	eID, err = p.Lookup(fPath)
 	if err != nil {
-		return 0, eID, meta, err
+		return
+	}
+	var readMeta nugget.NodeMetadata
+	readMeta, err = p.ReadMeta(eID)
+	if err != nil {
+		return
+	}
+	dispMeta := readMeta.(*EntryMetadata)
+
+	var w int
+	var size int64
+	w, size, err = p.chunkstore.Write(readMeta.GetDataLocality().Chunks()[0], offset, data)
+	written = int64(w)
+	dispMeta.Size = uint64(size)
+	if err != nil {
+		return
 	}
 
-	newData := doWrite(offset, data, existingData)
-	eID, meta, err = p.Store(fPath, newData)
-	return int64(len(data)), eID, meta, err
+	err = p.metastore.Commit(*dispMeta)
+	return
 }
 
 func (p *Provider) Read(fPath string, offset int64, size int64) ([]byte, error) {
@@ -210,27 +224,6 @@ func (p *Provider) Read(fPath string, offset int64, size int64) ([]byte, error) 
 	}
 
 	return p.chunkstore.Read(meta.GetDataLocality().Chunks()[0], offset, size)
-}
-
-// doWrite does the buffer manipulation to perform a write. Data buffers are kept
-// contiguous.
-// Credit: bwester (consulfs)
-func doWrite(offset int64, writeData []byte, fileData []byte) []byte {
-	fileEnd := int64(len(fileData))
-	writeEnd := offset + int64(len(writeData))
-	var buf []byte
-	if writeEnd > fileEnd {
-		buf = make([]byte, writeEnd)
-		if fileEnd <= offset {
-			copy(buf, fileData)
-		} else {
-			copy(buf, fileData[:offset])
-		}
-	} else {
-		buf = fileData
-	}
-	copy(buf[offset:writeEnd], writeData)
-	return buf
 }
 
 // Fetch returns the full tree of information about a file.

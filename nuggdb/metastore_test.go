@@ -40,6 +40,55 @@ func TestMetaCommitSucceeds(t *testing.T) {
 	}
 }
 
+func TestMetaChangeTakesEffect(t *testing.T) {
+	p, err := OpenMetaStore("testmetastore.db")
+	if err != nil {
+		t.Error(err)
+	}
+	defer func() {
+		p.Close()
+		os.Remove("testmetastore.db")
+	}()
+
+	meta := EntryMetadata{
+		EntryID: nugget.EntryID{'1', '\xA7'},
+		Size:    4553,
+		Lname:   "bro",
+		IsDir:   true,
+		Locality: LocalityInfo{
+			ChunkID: nugget.ChunkID{'\x42'},
+		},
+	}
+
+	err = p.Commit(meta)
+	if err != nil {
+		t.Error(err)
+	}
+
+	v, err := p.Lookup(meta.EntryID)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if v.GetSize() != 4553 {
+		t.Error("Size incorrect")
+	}
+
+	v.Size = 1
+	err = p.Commit(v)
+	if err != nil {
+		t.Error(err)
+	}
+
+	v2, err := p.Lookup(meta.EntryID)
+	if err != nil {
+		t.Error(err)
+	}
+	if v2.GetSize() != 1 {
+		t.Error("Size incorrect")
+	}
+}
+
 func TestMetaCommitReadSucceeds(t *testing.T) {
 	p, err := OpenMetaStore("testmetastore.db")
 	if err != nil {

@@ -64,12 +64,12 @@ Note the use of certificates to authenticate the server and itself.
  - [x] Implement packet encoding for ReadData, Store, Mkdir, Delete
  - [x] Start using FUSE Read() instead of ReadAll() - Make network method to read()
  - [x] Likewise use FUSE Write() and pass it through
+ - [ ] Proper tests for nuggdb (Provider)
  - [ ] Prevent remove() from deleting non-empty directories
  - [x] Make nuggdb store chunks as actual files
  - [ ] Make file-backed chunk db delete unneeded folders.
  - [ ] Encode permission information in metadata
  - [ ] Implement ReadData method on the network client
  - [ ] Write tests / documentation for ./packet
- - [ ] Get multiple chunks working & encoded
- - [ ] Make script to allow incremential backup to S3
+ - [ ] Make script to allow incremental backup to S3
  - [ ] Make replication / distributed mode

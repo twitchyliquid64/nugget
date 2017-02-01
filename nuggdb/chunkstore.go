@@ -49,6 +49,27 @@ func (cs *Chunkstore) Lookup(chunkID nugget.ChunkID) ([]byte, error) {
 	return ioutil.ReadFile(fPath)
 }
 
+func (cs *Chunkstore) Write(chunkID nugget.ChunkID, offset int64, data []byte) (int, int64, error) {
+	fPath := path.Join(cs.path, cs.dirPrefix(chunkID), cs.fileName(chunkID))
+	fHandle, err := os.OpenFile(fPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, 0, ErrChunkNotFound
+		}
+		return 0, 0, err
+	}
+	defer fHandle.Close()
+	written, err := fHandle.WriteAt(data, offset)
+	if err != nil {
+		return written, 0, err
+	}
+	stat, err := fHandle.Stat()
+	if err != nil {
+		return written, 0, err
+	}
+	return written, stat.Size(), err
+}
+
 func (cs *Chunkstore) Read(chunkID nugget.ChunkID, offset int64, size int64) ([]byte, error) {
 	fPath := path.Join(cs.path, cs.dirPrefix(chunkID), cs.fileName(chunkID))
 	fHandle, err := os.Open(fPath)
